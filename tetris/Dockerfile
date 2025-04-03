@@ -5,7 +5,7 @@ FROM nginx:alpine
 WORKDIR /usr/share/nginx/html
 
 # 프론트엔드 파일 복사
-COPY frontend/ .
+COPY tetris/frontend/ .
 
 # Nginx 설정 파일 복사 (선택 사항)
 # COPY nginx.conf /etc/nginx/conf.d/default.conf
