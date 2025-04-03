@@ -1,5 +1,5 @@
 # Nginx를 베이스 이미지로 사용
-FROM nginx:alpine
+FROM --platform=linux/amd64 nginx:alpine
 
 # 작업 디렉토리 설정
 WORKDIR /usr/share/nginx/html
