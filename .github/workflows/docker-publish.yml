@@ -47,4 +47,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max 
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+      
+      # 로컬에서 빌드 확인
+      - name: 로컬에서 빌드 확인
+        run: docker buildx build --platform=linux/amd64 -t tetris-game . 
