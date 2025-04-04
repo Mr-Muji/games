@@ -52,4 +52,4 @@ jobs:
       
       # 로컬에서 빌드 확인
       - name: 로컬에서 빌드 확인
-        run: docker buildx build --platform=linux/amd64 -t tetris-game . 
+        run: docker buildx build --platform=linux/amd64 -t tetris-game -f tetris/Dockerfile . 
