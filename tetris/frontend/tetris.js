@@ -82,6 +82,7 @@ let lines = 0;                   // 제거한 라인 수
 let dropStart = Date.now();      // 블록 드롭 시작 시간
 let piece = randomPiece();       // 현재 조작 중인 블록
 let nextPiece = randomPiece();   // 다음 블록
+let requestId = null; // 게임 루프용 requestAnimationFrame ID
 
 // 게임 속도 (ms, 레벨에 따라 조정됨)
 let dropInterval = 1000;
@@ -524,45 +525,130 @@ function drawGameOver() {
     ctx.fillText('다시 시작하려면 시작 버튼을 누르세요', canvas.width / 2, canvas.height / 2 + 20);
 }
 
-// 메인 게임 루프
+// 게임 오버를 처리하는 함수를 endGame()으로 이름 변경
+function endGame() {
+    if (requestId) {
+        cancelAnimationFrame(requestId);
+    }
+    gameOver = true;
+    
+    // 게임 오버 메시지 표시
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.font = '30px Arial';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.fillText('게임 오버', canvas.width / 2
+        , canvas.height / 2 - 50);
+    
+    ctx.font = '20px Arial';
+    ctx.fillText(`최종 점수: ${score}`, canvas.width / 2, canvas.height / 2);
+    
+    // (필요하면 점수 저장 로직 실행)
+    saveScore();
+
+    startButton.textContent = '다시 시작';
+}
+
+// main gameLoop 쪽에서 requestAnimationFrame 호출 시 반환값을 requestId에 저장
 function gameLoop() {
-    // 게임판 그리기 (항상 그려야 함)
     drawBoard();
     
-    // 게임 오버 상태 확인
     if (gameOver) {
-        drawGameOver();
+        drawGameOver(); // 혹은 endGame()으로 바로 처리
         return;
     }
-    
-    // 일시정지 상태 확인
     if (isPaused) {
         return;
     }
-    
-    // 현재 시간 체크
+
     const now = Date.now();
     const delta = now - dropStart;
-    
-    // 드롭 간격에 따라 블록 내리기
+
     if (delta > dropInterval) {
         dropPiece();
     }
-    
-    // 다음 프레임 요청
-    requestAnimationFrame(gameLoop);
+
+    requestId = requestAnimationFrame(gameLoop);
 }
 
 // 초기화 및 게임 시작
 window.onload = function() {
+    // 로그인 확인
+    const token = localStorage.getItem('token');
+    if (!token) {
+        // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    // UI에 사용자 이름 표시 (필요시)
+    const username = localStorage.getItem('username');
+    if (username) {
+        // 예: 게임 정보 영역에 사용자 이름 표시
+        document.querySelector('.game-info h1').textContent = `테트리스 - ${username}`;
+    }
+    
     // 게임판 초기 그리기
     drawBoard();
-    
     // 다음 블록 그리기
     drawNextPiece();
-    
     // 시작 버튼 텍스트 설정
     startButton.textContent = '게임 시작';
     
-    // 게임은 자동으로 시작하지 않고 사용자가 시작 버튼을 눌러야 시작
+    // 게임 메뉴 버튼 추가
+    const menuButton = document.getElementById('menu-btn');
+    if (menuButton) {
+        menuButton.addEventListener('click', function() {
+            window.location.href = 'games.html';
+        });
+    }
+}
+
+// 게임 점수 저장 함수
+function saveScore() {
+    // 게임 오버 시에만 호출
+    if (!gameOver) return;
+    
+    // JWT 토큰이 없으면 저장하지 않음
+    const token = localStorage.getItem('token');
+    if (!token) {
+        console.log('로그인이 필요합니다.');
+        return;
+    }
+    
+    // 점수 데이터 생성
+    const scoreData = {
+        score: score,
+        lines: linesCleared,
+        level: level
+    };
+    
+    // API 서버로 점수 전송
+    fetch('http://localhost:8080/api/scores', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(scoreData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('점수 저장에 실패했습니다.');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.newHighScore) {
+            // 새로운 최고 점수인 경우 표시
+            alert('축하합니다! 새로운 최고 점수를 달성했습니다!');
+        } else {
+            console.log('게임 점수가 기록되었습니다.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
 } 

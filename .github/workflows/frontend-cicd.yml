@@ -42,7 +42,7 @@ jobs:
         with:
           # 빌드 컨텍스트를 최상위(.)로 설정
           context: .
-          file: ./tetris/Dockerfile
+          file: ./tetris/frontend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -52,4 +52,4 @@ jobs:
       
       # 로컬에서 빌드 확인
       - name: 로컬에서 빌드 확인
-        run: docker buildx build --platform=linux/amd64 -t tetris-game -f tetris/Dockerfile . 
+        run: docker buildx build --platform=linux/amd64 -t tetris-game -f tetris/frontend/Dockerfile . 

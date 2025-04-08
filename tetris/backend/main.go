@@ -9,10 +9,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/gin-contrib/cors"  // CORS 미들웨어 추가
 	"github.com/gin-gonic/gin"     // Gin 웹 프레임워크
 	"github.com/golang-jwt/jwt/v4" // JWT 처리 함수
-	_ "github.com/lib/pq"          // PostgreSQL 드라이버를 초기화합니다.
-	"golang.org/x/crypto/bcrypt"   // bcrypt 함수를 사용하여 비밀번호 암호화
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"        // PostgreSQL 드라이버를 초기화합니다.
+	"golang.org/x/crypto/bcrypt" // bcrypt 함수를 사용하여 비밀번호 암호화
 )
 
 // 사용자 정보를 나타내는 구조체입니다.
@@ -78,43 +80,79 @@ func runMigrations() error {
 	return nil
 }
 
+// 점수 저장 요청 구조체
+type ScoreRequest struct {
+	Score int `json:"score" binding:"required"`
+	Lines int `json:"lines"`
+	Level int `json:"level"`
+}
+
+// 점수 응답 구조체
+type ScoreResponse struct {
+	Username string `json:"username"`
+	Score    int    `json:"score"`
+	Lines    int    `json:"lines"`
+	Level    int    `json:"level"`
+	Date     string `json:"date"`
+}
+
 func main() {
-	// 데이터베이스 초기화
+	// .env 파일 로드
+	err := godotenv.Load()
+	if err != nil {
+		log.Println(".env 파일을 찾을 수 없습니다:", err)
+		// 치명적 오류가 아니므로 계속 진행
+	}
+
+	// JWT 시크릿 설정 (환경변수에서 가져오거나, 기본값 사용)
+	secretKey := os.Getenv("JWT_SECRET")
+	if secretKey != "" {
+		jwtSecret = []byte(secretKey)
+	}
+
+	// DB 초기화
 	initDB()
 
-	// JWT 비밀키를 환경변수로 재설정 (있을 경우)
-	if secret := os.Getenv("JWT_SECRET"); secret != "" {
-		jwtSecret = []byte(secret)
-	}
-
-	// 기본 포트를 환경변수에서 가져오며, 기본값은 8080
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	// Gin 라우터를 생성합니다.
+	// Gin 라우터 생성
 	router := gin.Default()
 
-	// JSON 요청을 처리하기 위한 미들웨어가 기본으로 포함되어 있습니다.
+	// CORS 미들웨어 추가
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:8081", "http://127.0.0.1:8081"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
-	// 회원가입 API: /signup
+	// API 경로 설정
 	router.POST("/signup", signupHandler)
-
-	// 로그인 API: /login
 	router.POST("/login", loginHandler)
 
-	// 인증 미들웨어를 거치는 그룹 (JWT 토큰 필요)
+	// 기본 루트 경로 추가 (API 상태 확인용)
+	router.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "테트리스 게임 API가 실행 중입니다",
+		})
+	})
+
+	// 인증 필요한 API 그룹 설정 (기존 코드에 있다면 유지)
 	authorized := router.Group("/")
 	authorized.Use(authMiddleware())
 	{
-		// 내 정보 조회 API: /me
-		authorized.GET("/me", getUserHandler)
-		// 점수 업데이트 API: /score
-		authorized.POST("/score", updateScoreHandler)
+		// 점수 업데이트, 이력 조회 등 인증이 필요한 API는 여기에 추가
+		authorized.POST("/scores", updateScoreHandler)
+		// 추가 API는 여기에...
 	}
 
-	log.Printf("서버가 포트 %s에서 시작됩니다.", port)
+	// 서버 포트 설정 및 실행
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // 기본 포트
+	}
+
+	log.Printf("서버가 http://localhost:%s 에서 실행 중입니다", port)
 	router.Run(":" + port)
 }
 
@@ -274,40 +312,116 @@ func getUserHandler(c *gin.Context) {
 // updateScoreHandler 함수는 인증된 사용자의 점수를 업데이트합니다.
 // 요청 본문에 { "score": 새점수 } 형태로 전달합니다.
 func updateScoreHandler(c *gin.Context) {
+	// 사용자 ID 가져오기 (JWT에서 추출)
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "사용자 정보가 없습니다."})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "인증되지 않은 사용자"})
 		return
 	}
-	var req struct {
+
+	// 요청 본문 파싱
+	var scoreData struct {
 		Score int `json:"score"`
 	}
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "잘못된 요청입니다."})
+
+	if err := c.ShouldBindJSON(&scoreData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "유효하지 않은 점수 데이터"})
 		return
 	}
-	// 현재 저장된 점수를 조회합니다.
-	var currentScore int
-	err := db.QueryRow("SELECT score FROM users WHERE id=$1", userID).Scan(&currentScore)
+
+	// 점수 업데이트 로직 (예시)
+	_, err := db.Exec("UPDATE users SET score = $1 WHERE id = $2",
+		scoreData.Score, userID)
+
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "현재 점수 조회에 실패했습니다."})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "점수 업데이트 실패"})
 		return
 	}
-	// 새 점수가 현재 점수보다 높을 때만 업데이트합니다.
-	if req.Score > currentScore {
-		_, err = db.Exec("UPDATE users SET score = $1 WHERE id = $2", req.Score, userID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "점수 업데이트에 실패했습니다."})
+
+	c.JSON(http.StatusOK, gin.H{"message": "점수가 업데이트되었습니다"})
+}
+
+// 고득점 목록 조회 핸들러
+func getHighScoresHandler(c *gin.Context) {
+	// 상위 10개 고득점 목록 가져오기
+	rows, err := db.Query(`
+		SELECT u.username, u.score, gr.lines, gr.level, gr.played_at 
+		FROM users u
+		JOIN game_records gr ON u.id = gr.user_id
+		ORDER BY u.score DESC
+		LIMIT 10
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "고득점 목록을 불러오는데 실패했습니다"})
+		return
+	}
+	defer rows.Close()
+
+	// 결과 조합
+	var highScores []ScoreResponse
+	for rows.Next() {
+		var score ScoreResponse
+		var playedAt time.Time
+		if err := rows.Scan(&score.Username, &score.Score, &score.Lines, &score.Level, &playedAt); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "데이터 처리 중 오류가 발생했습니다"})
 			return
 		}
+		score.Date = playedAt.Format("2006-01-02 15:04:05")
+		highScores = append(highScores, score)
 	}
-	// 업데이트 후 사용자 정보를 가져와 반환합니다.
-	var user User
-	err = db.QueryRow("SELECT id, username, score FROM users WHERE id=$1", userID).
-		Scan(&user.ID, &user.Username, &user.Score)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "사용자 정보를 가져오는데 실패했습니다."})
+
+	c.JSON(http.StatusOK, gin.H{"highScores": highScores})
+}
+
+// 사용자 자신의 최고 점수 조회 핸들러
+func getUserScoreHandler(c *gin.Context) {
+	// JWT 토큰에서 사용자 식별
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "인증이 필요합니다"})
 		return
 	}
-	c.JSON(http.StatusOK, user)
+
+	// 사용자 점수 정보 조회
+	var username string
+	var score int
+	err := db.QueryRow("SELECT username, score FROM users WHERE id = $1", userID).Scan(&username, &score)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "사용자 정보를 불러오는데 실패했습니다"})
+		return
+	}
+
+	// 최근 게임 기록 조회
+	rows, err := db.Query(`
+		SELECT score, lines, level, played_at 
+		FROM game_records 
+		WHERE user_id = $1 
+		ORDER BY played_at DESC
+		LIMIT 5
+	`, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "게임 기록을 불러오는데 실패했습니다"})
+		return
+	}
+	defer rows.Close()
+
+	// 결과 조합
+	var gameHistory []ScoreResponse
+	for rows.Next() {
+		var record ScoreResponse
+		record.Username = username
+		var playedAt time.Time
+		if err := rows.Scan(&record.Score, &record.Lines, &record.Level, &playedAt); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "데이터 처리 중 오류가 발생했습니다"})
+			return
+		}
+		record.Date = playedAt.Format("2006-01-02 15:04:05")
+		gameHistory = append(gameHistory, record)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"highScore":   score,
+		"username":    username,
+		"gameHistory": gameHistory,
+	})
 }

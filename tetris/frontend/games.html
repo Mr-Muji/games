@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>게임 선택</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* 게임 선택 페이지 전용 스타일 */
+        .games-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .welcome-text {
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .username {
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .logout-btn {
+            padding: 8px 15px;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        .games-title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .game-card {
+            background-color: #f8f8f8;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .game-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .game-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .game-description {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="games-container">
+        <div class="header">
+            <p class="welcome-text"><span id="username" class="username">사용자</span>님, 환영합니다!</p>
+            <button id="logout-btn" class="logout-btn">로그아웃</button>
+        </div>
+        
+        <h1 class="games-title">게임을 선택하세요</h1>
+        
+        <div class="games-grid">
+            <div class="game-card" id="tetris-game">
+                <div class="game-icon">🧩</div>
+                <h2 class="game-title">테트리스</h2>
+                <p class="game-description">클래식 테트리스 게임을 즐겨보세요.</p>
+            </div>
+            
+            <div class="game-card" id="shooting-game">
+                <div class="game-icon">🚀</div>
+                <h2 class="game-title">슈팅 게임</h2>
+                <p class="game-description">적 우주선을 쏘아 맞추는 슈팅 게임입니다. (개발 중)</p>
+            </div>
+            
+            <div class="game-card" id="snake-game">
+                <div class="game-icon">🐍</div>
+                <h2 class="game-title">스네이크</h2>
+                <p class="game-description">뱀을 조종해 먹이를 먹는 게임입니다. (개발 중)</p>
+            </div>
+            
+            <div class="game-card" id="puzzle-game">
+                <div class="game-icon">🧠</div>
+                <h2 class="game-title">퍼즐 게임</h2>
+                <p class="game-description">두뇌를 자극하는 퍼즐 게임입니다. (개발 중)</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="games.js"></script>
+</body>
+</html>
