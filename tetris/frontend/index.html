@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>테트리스 게임</title>
     <link rel="stylesheet" href="style.css">
+    <script>
+    // 캐시 방지 코드
+    document.addEventListener('DOMContentLoaded', function() {
+        // 콘솔에 로그 남기기
+        console.log('HTML 로드됨! 테트리스 시작 준비 완료');
+    });
+    </script>
 </head>
 <body>
     <div class="container">
@@ -36,6 +43,7 @@
             <canvas id="board" width="300" height="600"></canvas>
         </div>
     </div>
-    <script src="tetris.js"></script>
+    <!-- 캐시 방지를 위해 타임스탬프 추가 -->
+    <script src="tetris.js?v=2023"></script>
 </body>
 </html>

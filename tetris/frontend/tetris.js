@@ -73,142 +73,222 @@ const SHAPES = [
 ];
 
 // 게임 상태 변수
-let board = createBoard();       // 게임판 생성
-let gameOver = false;            // 게임 오버 상태
-let isPaused = false;            // 일시정지 상태
-let score = 0;                   // 점수
-let level = 1;                   // 레벨
-let lines = 0;                   // 제거한 라인 수
-let dropStart = Date.now();      // 블록 드롭 시작 시간
-let piece = randomPiece();       // 현재 조작 중인 블록
-let nextPiece = randomPiece();   // 다음 블록
-let requestId = null; // 게임 루프용 requestAnimationFrame ID
-
-// 게임 속도 (ms, 레벨에 따라 조정됨)
+let board = [];
+let gameOver = false;
+let isPaused = false;
+let isPlaying = false;
+let score = 0;
+let level = 1;
+let lines = 0;
+let dropStart = Date.now();
 let dropInterval = 1000;
+let piece = null;
+let nextPiece = null;
+let animationId = null;
 
-// 키보드 이벤트 리스너 추가
-document.addEventListener('keydown', keyControl);
+// 게임 시작 키 입력을 무시하기 위한 플래그 추가
+let isStartKeyPressed = false;
 
-// 버튼 이벤트 리스너 추가
-startButton.addEventListener('click', startGame);
-pauseButton.addEventListener('click', togglePause);
+// 캔버스 크기 설정
+canvas.width = COLS * BLOCK_SIZE;
+canvas.height = ROWS * BLOCK_SIZE;
 
-// 게임판 생성 함수
+// 게임판 초기화
 function createBoard() {
-    // 10x20 크기의 빈 게임판 배열 생성
-    let board = [];
+    board = [];
     for (let row = 0; row < ROWS; row++) {
         board[row] = [];
         for (let col = 0; col < COLS; col++) {
-            board[row][col] = 0; // 0은 빈 셀을 의미
+            board[row][col] = 0;
         }
     }
-    return board;
 }
 
-// 랜덤 테트로미노 생성 함수
+// 랜덤 테트로미노 생성
 function randomPiece() {
-    // 1부터 7까지의 랜덤 숫자 생성 (각각의 테트로미노 모양에 해당)
     const type = Math.floor(Math.random() * 7) + 1;
-    // 새로운 테트로미노 객체 생성
-    const piece = {
-        type: type,                           // 블록 타입
-        shape: SHAPES[type],                  // 블록 모양
-        x: Math.floor(COLS / 2) - 1,          // 초기 x 위치 (중앙)
-        y: 0,                                 // 초기 y 위치 (맨 위)
-        color: COLORS[type]                   // 블록 색상
+    return {
+        type: type,
+        shape: SHAPES[type],
+        x: Math.floor(COLS / 2) - 1,
+        y: 0
     };
-    return piece;
 }
 
-// 게임 시작 함수
+// 게임 초기화 (처음 로드 시)
+function init() {
+    createBoard();
+    piece = randomPiece();
+    nextPiece = randomPiece();
+    updateScore();
+    drawBoard();
+    drawNextPiece();
+    
+    // 시작 화면 메시지 표시
+    showStartMessage();
+}
+
+// 시작 화면 메시지 표시
+function showStartMessage() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.font = '24px Arial';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.fillText('아무 키나 눌러 시작하세요', canvas.width / 2, canvas.height / 2);
+}
+
+// 게임 시작
 function startGame() {
-    // 항상 게임을 초기화하도록 수정 (gameOver 상태와 관계없이)
-    // 게임 상태 초기화
-    board = createBoard();
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+    }
+    
+    createBoard();
+    piece = randomPiece();
+    nextPiece = randomPiece();
+    gameOver = false;
+    isPaused = false;
+    isPlaying = true;
     score = 0;
     level = 1;
     lines = 0;
-    gameOver = false;
+    dropInterval = 1000;
+    dropStart = Date.now();
     
-    // UI 업데이트
     updateScore();
+    startButton.textContent = '게임 재시작';
     
-    // 새 블록 생성
-    piece = randomPiece();
-    nextPiece = randomPiece();
+    console.log('게임 시작!');
     
     // 게임 루프 시작
-    requestAnimationFrame(gameLoop);
-    
-    // 시작 버튼 텍스트 설정
-    startButton.textContent = '게임 재시작';
+    animationId = requestAnimationFrame(gameLoop);
 }
 
-// 게임 일시정지 토글 함수
+// 게임 일시정지 토글
 function togglePause() {
-    if (!gameOver) {
-        isPaused = !isPaused;
-        pauseButton.textContent = isPaused ? '계속하기' : '일시정지';
-        
-        if (!isPaused) {
-            // 일시정지 해제 시 게임 루프 재개
-            dropStart = Date.now();
-            requestAnimationFrame(gameLoop);
+    if (!isPlaying || gameOver) return;
+    
+    isPaused = !isPaused;
+    pauseButton.textContent = isPaused ? '계속하기' : '일시정지';
+    
+    if (!isPaused) {
+        dropStart = Date.now();
+        animationId = requestAnimationFrame(gameLoop);
+    }
+}
+
+// 게임판 그리기
+function drawBoard() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ecf0f1';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+            const cellValue = board[row][col];
+            if (cellValue > 0) {
+                ctx.fillStyle = COLORS[cellValue];
+                ctx.fillRect(col * BLOCK_SIZE, row * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                ctx.strokeStyle = 'black';
+                ctx.strokeRect(col * BLOCK_SIZE, row * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            } else {
+                ctx.strokeStyle = '#dfe6e9';
+                ctx.strokeRect(col * BLOCK_SIZE, row * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            }
+        }
+    }
+    
+    // 현재 블록 그리기
+    if (piece) {
+        for (let row = 0; row < piece.shape.length; row++) {
+            for (let col = 0; col < piece.shape[row].length; col++) {
+                if (piece.shape[row][col] !== 0) {
+                    const x = piece.x + col;
+                    const y = piece.y + row;
+                    
+                    if (y >= 0) {
+                        ctx.fillStyle = COLORS[piece.type];
+                        ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        ctx.strokeStyle = 'black';
+                        ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                }
+            }
         }
     }
 }
 
-// 키보드 입력 처리 함수
-function keyControl(e) {
-    if (gameOver || isPaused) return;
+// 다음 블록 그리기
+function drawNextPiece() {
+    nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
     
-    // 키보드 입력에 따라 블록 이동 또는 회전
-    switch(e.keyCode) {
-        case 37:    // 왼쪽 화살표: 왼쪽으로 이동
-            movePiece(-1);
-            break;
-        case 39:    // 오른쪽 화살표: 오른쪽으로 이동
-            movePiece(1);
-            break;
-        case 40:    // 아래쪽 화살표: 빠르게 내리기
-            dropPiece();
-            break;
-        case 38:    // 위쪽 화살표: 회전
-            rotatePiece();
-            break;
-        case 32:    // 스페이스바: 즉시 내리기
-            hardDrop();
-            break;
+    const offsetX = Math.floor((nextCanvas.width / NEXT_BLOCK_SIZE - nextPiece.shape[0].length) / 2);
+    const offsetY = Math.floor((nextCanvas.height / NEXT_BLOCK_SIZE - nextPiece.shape.length) / 2);
+    
+    for (let row = 0; row < nextPiece.shape.length; row++) {
+        for (let col = 0; col < nextPiece.shape[row].length; col++) {
+            if (nextPiece.shape[row][col] !== 0) {
+                nextCtx.fillStyle = COLORS[nextPiece.type];
+                nextCtx.fillRect(
+                    (offsetX + col) * NEXT_BLOCK_SIZE,
+                    (offsetY + row) * NEXT_BLOCK_SIZE,
+                    NEXT_BLOCK_SIZE,
+                    NEXT_BLOCK_SIZE
+                );
+                nextCtx.strokeStyle = 'black';
+                nextCtx.strokeRect(
+                    (offsetX + col) * NEXT_BLOCK_SIZE,
+                    (offsetY + row) * NEXT_BLOCK_SIZE,
+                    NEXT_BLOCK_SIZE,
+                    NEXT_BLOCK_SIZE
+                );
+            }
+        }
     }
 }
 
-// 블록 좌우 이동 함수
-function movePiece(direction) {
-    // 이동 전 현재 위치 저장
-    const prevX = piece.x;
-    
-    // 좌우로 이동
-    piece.x += direction;
-    
-    // 충돌 검사
+// 점수 업데이트
+function updateScore() {
+    scoreElement.textContent = score;
+    levelElement.textContent = level;
+    linesElement.textContent = lines;
+}
+
+// 충돌 검사
+function checkCollision() {
+    for (let row = 0; row < piece.shape.length; row++) {
+        for (let col = 0; col < piece.shape[row].length; col++) {
+            if (piece.shape[row][col] !== 0) {
+                const x = piece.x + col;
+                const y = piece.y + row;
+                
+                if (x < 0 || x >= COLS || y >= ROWS || 
+                   (y >= 0 && board[y][x] !== 0)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// 블록 이동
+function movePiece(dir) {
+    piece.x += dir;
     if (checkCollision()) {
-        // 충돌 시 이전 위치로 복원
-        piece.x = prevX;
+        piece.x -= dir;
+    } else {
+        drawBoard();
     }
-    
-    // 화면 갱신
-    drawBoard();
 }
 
-// 블록 회전 함수
+// 블록 회전
 function rotatePiece() {
-    // 현재 블록의 모양 복사
     const originalShape = piece.shape;
     const length = originalShape.length;
     
-    // 새로운 회전된 모양 계산
     const rotated = [];
     for (let i = 0; i < length; i++) {
         rotated[i] = [];
@@ -217,415 +297,208 @@ function rotatePiece() {
         }
     }
     
-    // 임시로 회전 적용
     piece.shape = rotated;
     
-    // 충돌 검사
     if (checkCollision()) {
-        // 충돌 시 원래 모양으로 복원
         piece.shape = originalShape;
+    } else {
+        drawBoard();
     }
-    
-    // 화면 갱신
-    drawBoard();
 }
 
-// 블록 드롭 함수 (부드럽게 내리기)
+// 블록 내리기
 function dropPiece() {
-    // 한 칸 아래로 이동
     piece.y++;
-    
-    // 충돌 검사
     if (checkCollision()) {
-        // 충돌 시 이전 위치로 복원
         piece.y--;
-        // 보드에 블록 고정
         lockPiece();
+    } else {
+        drawBoard();
     }
     
-    // 드롭 시작 시간 재설정
     dropStart = Date.now();
-    
-    // 화면 갱신
-    drawBoard();
 }
 
-// 블록 하드 드롭 함수 (즉시 내리기)
+// 블록 바로 내리기
 function hardDrop() {
-    // 바닥에 닿을 때까지 반복
     while (!checkCollision()) {
         piece.y++;
     }
-    
-    // 마지막 위치 수정
     piece.y--;
-    
-    // 보드에 블록 고정
     lockPiece();
-    
-    // 화면 갱신
-    drawBoard();
 }
 
-// 충돌 검사 함수
-function checkCollision() {
-    const shape = piece.shape;
-    
-    for (let y = 0; y < shape.length; y++) {
-        for (let x = 0; x < shape[y].length; x++) {
-            // 블록이 있는 셀만 검사
-            if (shape[y][x] !== 0) {
-                const boardX = piece.x + x;
-                const boardY = piece.y + y;
-                
-                // 게임판 범위 밖인지 검사
-                if (boardX < 0 || boardX >= COLS || boardY >= ROWS) {
-                    return true;
-                }
-                
-                // 아래쪽으로 이동 중 보드 바닥 검사
-                if (boardY < 0) {
-                    continue; // 아직 보드 위쪽 영역이면 무시
-                }
-                
-                // 다른 블록과 충돌 검사
-                if (board[boardY][boardX] !== 0) {
-                    return true;
-                }
-            }
-        }
-    }
-    
-    // 충돌 없음
-    return false;
-}
-
-// 블록을 게임판에 고정하는 함수
+// 블록 고정
 function lockPiece() {
-    const shape = piece.shape;
-    
-    // 게임 오버 확인을 위한 변수
-    let isAboveBoard = true;
-    
-    for (let y = 0; y < shape.length; y++) {
-        for (let x = 0; x < shape[y].length; x++) {
-            // 블록이 있는 셀만 처리
-            if (shape[y][x] !== 0) {
-                const boardY = piece.y + y;
+    for (let row = 0; row < piece.shape.length; row++) {
+        for (let col = 0; col < piece.shape[row].length; col++) {
+            if (piece.shape[row][col] !== 0) {
+                const y = piece.y + row;
+                const x = piece.x + col;
                 
-                // 게임판 범위 내 블록이 있는지 확인 (게임 오버 체크용)
-                if (boardY >= 0) {
-                    isAboveBoard = false;
+                if (y < 0) {
+                    gameOver = true;
+                    showGameOver();
+                    return;
                 }
                 
-                // 게임판 범위 밖이면 해당 블록은 건너뜀
-                if (boardY < 0) continue;
-                
-                // 게임판에 블록 고정
-                board[boardY][piece.x + x] = piece.type;
+                board[y][x] = piece.type;
             }
         }
     }
     
-    // 게임 오버 체크: 블록이 모두 게임판 위에 있으면 게임 오버
-    if (isAboveBoard) {
-        gameOver = true;
-        return;
-    }
+    clearLines();
     
-    // 새 블록 생성 전 게임 오버 체크: 새 블록이 현재 블록과 겹치면 게임 오버
     piece = nextPiece;
     nextPiece = randomPiece();
     
     if (checkCollision()) {
         gameOver = true;
-        drawGameOver(); // 바로 게임오버 화면 표시
-        return;
+        showGameOver();
+    } else {
+        drawNextPiece();
     }
-    
-    // 완성된 라인 제거 및 점수 계산
-    clearLines();
-    
-    // 다음 블록 미리보기 업데이트
-    drawNextPiece();
 }
 
-// 완성된 라인 제거 함수
+// 라인 제거
 function clearLines() {
     let linesCleared = 0;
     
-    for (let y = ROWS - 1; y >= 0; y--) {
-        let isLineComplete = true;
+    for (let row = ROWS - 1; row >= 0; row--) {
+        let full = true;
         
-        // 한 줄이 모두 채워졌는지 검사
-        for (let x = 0; x < COLS; x++) {
-            if (board[y][x] === 0) {
-                isLineComplete = false;
+        for (let col = 0; col < COLS; col++) {
+            if (board[row][col] === 0) {
+                full = false;
                 break;
             }
         }
         
-        // 완성된 라인 제거
-        if (isLineComplete) {
+        if (full) {
             linesCleared++;
             
-            // 위에 있는 라인들을 한 칸씩 아래로 이동
-            for (let yy = y; yy > 0; yy--) {
-                for (let x = 0; x < COLS; x++) {
-                    board[yy][x] = board[yy - 1][x];
+            for (let r = row; r > 0; r--) {
+                for (let c = 0; c < COLS; c++) {
+                    board[r][c] = board[r-1][c];
                 }
             }
             
-            // 맨 위 라인을 비움
-            for (let x = 0; x < COLS; x++) {
-                board[0][x] = 0;
+            for (let c = 0; c < COLS; c++) {
+                board[0][c] = 0;
             }
             
-            // 같은 y 위치를 다시 검사 (여러 줄이 동시에 제거될 수 있음)
-            y++;
+            row++; // 동일한 행 다시 검사
         }
     }
     
-    // 점수 계산 및 업데이트
     if (linesCleared > 0) {
-        // 점수 계산 (라인 수에 따라 보너스)
-        const lineScores = [40, 100, 300, 1200]; // 1, 2, 3, 4줄
-        score += lineScores[linesCleared - 1] * level;
-        
-        // 라인 수 업데이트
+        const linePoints = [40, 100, 300, 1200]; // 1, 2, 3, 4줄
+        score += linePoints[linesCleared - 1] * level;
         lines += linesCleared;
-        
-        // 레벨 업데이트 (10줄마다 레벨업)
         level = Math.floor(lines / 10) + 1;
-        
-        // 게임 속도 업데이트
         dropInterval = Math.max(100, 1000 - (level - 1) * 100);
         
-        // UI 업데이트
         updateScore();
     }
 }
 
-// 점수 UI 업데이트 함수
-function updateScore() {
-    scoreElement.textContent = score;
-    levelElement.textContent = level;
-    linesElement.textContent = lines;
-}
-
-// 게임판 그리기 함수
-function drawBoard() {
-    // 캔버스 초기화
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// 게임 오버 화면
+function showGameOver() {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+    isPlaying = false;
     
-    // 고정된 블록 그리기
-    for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
-            if (board[y][x] !== 0) {
-                drawBlock(x, y, board[y][x]);
-            }
-        }
-    }
-    
-    // 현재 조작 중인 블록 그리기
-    drawPiece();
-}
-
-// 다음 블록 그리기 함수
-function drawNextPiece() {
-    // 캔버스 초기화
-    nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-    
-    // 다음 블록의 중앙 위치 계산
-    const offsetX = Math.floor((nextCanvas.width / NEXT_BLOCK_SIZE - nextPiece.shape[0].length) / 2);
-    const offsetY = Math.floor((nextCanvas.height / NEXT_BLOCK_SIZE - nextPiece.shape.length) / 2);
-    
-    // 다음 블록 그리기
-    for (let y = 0; y < nextPiece.shape.length; y++) {
-        for (let x = 0; x < nextPiece.shape[y].length; x++) {
-            if (nextPiece.shape[y][x] !== 0) {
-                // 각 블록 셀 그리기
-                nextCtx.fillStyle = COLORS[nextPiece.type];
-                nextCtx.fillRect(
-                    (offsetX + x) * NEXT_BLOCK_SIZE,
-                    (offsetY + y) * NEXT_BLOCK_SIZE,
-                    NEXT_BLOCK_SIZE,
-                    NEXT_BLOCK_SIZE
-                );
-                
-                // 블록 테두리 그리기
-                nextCtx.strokeStyle = 'black';
-                nextCtx.lineWidth = 1;
-                nextCtx.strokeRect(
-                    (offsetX + x) * NEXT_BLOCK_SIZE,
-                    (offsetY + y) * NEXT_BLOCK_SIZE,
-                    NEXT_BLOCK_SIZE,
-                    NEXT_BLOCK_SIZE
-                );
-            }
-        }
-    }
-}
-
-// 현재 블록 그리기 함수
-function drawPiece() {
-    const shape = piece.shape;
-    
-    for (let y = 0; y < shape.length; y++) {
-        for (let x = 0; x < shape[y].length; x++) {
-            if (shape[y][x] !== 0) {
-                const boardX = piece.x + x;
-                const boardY = piece.y + y;
-                
-                // 보드 영역 안에 있는 블록만 그림
-                if (boardY >= 0) {
-                    drawBlock(boardX, boardY, piece.type);
-                }
-            }
-        }
-    }
-}
-
-// 단일 블록 그리기 함수
-function drawBlock(x, y, type) {
-    // 블록 배경 그리기
-    ctx.fillStyle = COLORS[type];
-    ctx.fillRect(
-        x * BLOCK_SIZE,
-        y * BLOCK_SIZE,
-        BLOCK_SIZE,
-        BLOCK_SIZE
-    );
-    
-    // 블록 테두리 그리기
-    ctx.strokeStyle = 'black';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(
-        x * BLOCK_SIZE,
-        y * BLOCK_SIZE,
-        BLOCK_SIZE,
-        BLOCK_SIZE
-    );
-}
-
-// 게임 오버 화면 그리기 함수
-function drawGameOver() {
-    // 반투명 오버레이
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // 텍스트 스타일 설정
-    ctx.fillStyle = 'white';
-    ctx.font = '30px Arial';
-    ctx.textAlign = 'center';
-    
-    // 텍스트 그리기
-    ctx.fillText('게임 오버', canvas.width / 2, canvas.height / 2 - 20);
-    ctx.font = '20px Arial';
-    ctx.fillText('다시 시작하려면 시작 버튼을 누르세요', canvas.width / 2, canvas.height / 2 + 20);
-}
-
-// 게임 오버를 처리하는 함수를 endGame()으로 이름 변경
-function endGame() {
-    if (requestId) {
-        cancelAnimationFrame(requestId);
-    }
-    gameOver = true;
-    
-    // 게임 오버 메시지 표시
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
     ctx.font = '30px Arial';
     ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
-    ctx.fillText('게임 오버', canvas.width / 2
-        , canvas.height / 2 - 50);
+    ctx.fillText('게임 오버', canvas.width / 2, canvas.height / 2 - 30);
     
     ctx.font = '20px Arial';
-    ctx.fillText(`최종 점수: ${score}`, canvas.width / 2, canvas.height / 2);
+    ctx.fillText(`최종 점수: ${score}`, canvas.width / 2, canvas.height / 2 + 10);
+    ctx.fillText('아무 키나 눌러 다시 시작', canvas.width / 2, canvas.height / 2 + 50);
     
-    // (필요하면 점수 저장 로직 실행)
     saveScore();
-
-    startButton.textContent = '다시 시작';
 }
 
-// main gameLoop 쪽에서 requestAnimationFrame 호출 시 반환값을 requestId에 저장
+// 게임 루프
 function gameLoop() {
-    drawBoard();
-    
-    if (gameOver) {
-        drawGameOver(); // 혹은 endGame()으로 바로 처리
+    if (gameOver || isPaused) {
         return;
     }
+    
+    const now = Date.now();
+    const delta = now - dropStart;
+    
+    if (delta > dropInterval) {
+        dropPiece();
+    }
+    
+    drawBoard();
+    animationId = requestAnimationFrame(gameLoop);
+}
+
+// 키보드 입력 처리
+function handleKeyPress(e) {
+    // 게임이 시작되지 않은 상태에서 아무 키나 누르면 게임 시작
+    if (!isPlaying && !gameOver) {
+        isStartKeyPressed = true; // 시작 키를 눌렀음을 표시
+        startGame();
+        // 이 키 입력은 게임에 영향을 주지 않도록 함
+        return;
+    }
+
+    // 게임 종료 상태에서 키를 누르면 게임 재시작
+    if (gameOver) {
+        isStartKeyPressed = true;
+        startGame();
+        return;
+    }
+
+    // 게임 일시정지 상태에서는 키 입력 무시
     if (isPaused) {
         return;
     }
 
-    const now = Date.now();
-    const delta = now - dropStart;
-
-    if (delta > dropInterval) {
-        dropPiece();
+    // 시작 키가 아닌 경우에만 게임 로직 적용
+    if (isStartKeyPressed) {
+        isStartKeyPressed = false; // 플래그 초기화
+        return; // 첫 번째 키 입력 무시
     }
 
-    requestId = requestAnimationFrame(gameLoop);
-}
-
-// 초기화 및 게임 시작
-window.onload = function() {
-    // 로그인 확인
-    const token = localStorage.getItem('token');
-    if (!token) {
-        // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
-        window.location.href = 'login.html';
-        return;
-    }
-    
-    // UI에 사용자 이름 표시 (필요시)
-    const username = localStorage.getItem('username');
-    if (username) {
-        // 예: 게임 정보 영역에 사용자 이름 표시
-        document.querySelector('.game-info h1').textContent = `테트리스 - ${username}`;
-    }
-    
-    // 게임판 초기 그리기
-    drawBoard();
-    // 다음 블록 그리기
-    drawNextPiece();
-    // 시작 버튼 텍스트 설정
-    startButton.textContent = '게임 시작';
-    
-    // 게임 메뉴 버튼 추가
-    const menuButton = document.getElementById('menu-btn');
-    if (menuButton) {
-        menuButton.addEventListener('click', function() {
-            window.location.href = 'games.html';
-        });
+    // 일반 게임 플레이 시 키 입력 처리
+    switch(e.keyCode) {
+        case 37: // 왼쪽
+            movePiece(-1);
+            break;
+        case 39: // 오른쪽
+            movePiece(1);
+            break;
+        case 40: // 아래
+            dropPiece();
+            break;
+        case 38: // 위
+            rotatePiece();
+            break;
+        case 32: // 스페이스
+            hardDrop();
+            break;
     }
 }
 
-// 게임 점수 저장 함수
+// 점수 저장
 function saveScore() {
-    // 게임 오버 시에만 호출
-    if (!gameOver) return;
-    
-    // JWT 토큰이 없으면 저장하지 않음
     const token = localStorage.getItem('token');
-    if (!token) {
-        console.log('로그인이 필요합니다.');
-        return;
-    }
+    if (!token) return;
     
-    // 점수 데이터 생성
     const scoreData = {
         score: score,
-        lines: linesCleared,
+        lines: lines,
         level: level
     };
     
-    // API 서버로 점수 전송
     fetch('http://localhost:8080/api/scores', {
         method: 'POST',
         headers: {
@@ -634,21 +507,84 @@ function saveScore() {
         },
         body: JSON.stringify(scoreData)
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('점수 저장에 실패했습니다.');
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
         if (data.newHighScore) {
-            // 새로운 최고 점수인 경우 표시
             alert('축하합니다! 새로운 최고 점수를 달성했습니다!');
-        } else {
-            console.log('게임 점수가 기록되었습니다.');
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('점수 저장 오류:', error);
     });
-} 
+}
+
+// 이벤트 리스너
+// document.addEventListener('keydown', handleKeyPress);
+startButton.addEventListener('click', startGame);
+pauseButton.addEventListener('click', togglePause);
+
+// 메뉴 버튼 이벤트 리스너
+const menuButton = document.getElementById('menu-btn');
+if (menuButton) {
+    menuButton.addEventListener('click', function() {
+        window.location.href = 'games.html';
+    });
+}
+
+// 페이지 로드 시 실행
+window.onload = function() {
+    console.log('테트리스 초기화 시작...');
+    
+    // DOM 요소 확인
+    console.log('start-btn 요소:', startButton);
+    console.log('pause-btn 요소:', pauseButton);
+    console.log('menu-btn 요소:', menuButton);
+    
+    // 로그인 확인
+    const token = localStorage.getItem('token');
+    if (!token) {
+        console.log('로그인 필요, 리다이렉트...');
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    // 사용자 이름 표시
+    const username = localStorage.getItem('username');
+    if (username) {
+        const gameTitle = document.querySelector('.game-info h1');
+        if (gameTitle) {
+            gameTitle.textContent = `테트리스 - ${username}`;
+            console.log('사용자 이름 표시됨:', username);
+        }
+    }
+    
+    // 모든 이벤트 리스너 제거
+    document.removeEventListener('keydown', handleKeyPress);
+    window.removeEventListener('keydown', handleKeyPress);
+    
+    // 한 번만 등록
+    document.addEventListener('keydown', handleKeyPress);
+    
+    // 게임 초기화
+    init();
+    
+    // 이벤트 리스너 명시적 추가
+    startButton.onclick = function() {
+        console.log('시작 버튼 클릭됨');
+        startGame();
+    };
+    
+    pauseButton.onclick = function() {
+        console.log('일시정지 버튼 클릭됨');
+        togglePause();
+    };
+    
+    if (menuButton) {
+        menuButton.onclick = function() {
+            console.log('메뉴 버튼 클릭됨');
+            window.location.href = 'games.html';
+        };
+    }
+    
+    console.log('테트리스 초기화 완료!');
+}; 

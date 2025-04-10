@@ -14,6 +14,8 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    margin: 0;
+    padding: 0;
 }
 
 /* 게임 컨테이너 */
@@ -22,8 +24,10 @@ body {
     background-color: white;
     border-radius: 10px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
+    overflow: visible;
     padding: 20px;
+    margin: 0 auto;
+    max-width: 100%;
 }
 
 /* 게임 정보 영역 */
@@ -108,14 +112,32 @@ body {
     border: 2px solid #2c3e50;
     border-radius: 5px;
     overflow: hidden;
+    background-color: #ecf0f1;
+    width: 300px;  /* COLS * BLOCK_SIZE와 정확히 일치 */
+    height: 600px; /* ROWS * BLOCK_SIZE와 정확히 일치 */
 }
 
 #board {
     background-color: #ecf0f1;
     display: block;
+    margin: 0;
 }
 
 /* 캔버스 스타일 */
 canvas {
     display: block;
+}
+
+/* 반응형 디자인을 위한 미디어 쿼리 추가 */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .game-info {
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 20px;
+    }
 } 

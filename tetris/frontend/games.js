@@ -55,3 +55,15 @@ puzzleGameCard.addEventListener('click', () => showDevelopingMessage('퍼즐'));
 
 // 페이지 로드 시 초기화
 loadUserInfo();
+
+// 테트리스 게임 카드에 클릭 이벤트 추가 부분 찾기
+const tetrisCard = document.querySelector('.game-card[data-game="tetris"]');
+if (tetrisCard) {
+    tetrisCard.addEventListener('click', function() {
+        // 로컬 스토리지 게임 상태 초기화 (선택사항)
+        localStorage.removeItem('tetris-game-state');
+        
+        // 테트리스 게임 페이지로 이동
+        window.location.href = 'index.html'; // 'tetris.html'이 아닌 'index.html'로 변경
+    });
+}
