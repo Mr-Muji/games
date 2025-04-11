@@ -116,15 +116,21 @@ func main() {
 	// Gin 라우터 생성
 	router := gin.Default()
 
-	// CORS 미들웨어 추가 (더 유연한 설정)
+	// CORS 미들웨어 추가 (개발 및 프로덕션 환경 모두 지원)
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
-			"http://localhost:3000",
-			"http://127.0.0.1:3000",
-			"https://kakaotech.my",
-			"https://www.kakaotech.my",
-			"http://kakaotech.my",
-			"http://www.kakaotech.my",
+			// 로컬 개발 환경 포트들
+			"http://localhost:3000", "http://127.0.0.1:3000",
+			"http://localhost:8000", "http://127.0.0.1:8000", // Python 웹 서버
+			"http://localhost:5500", "http://127.0.0.1:5500", // VS Code Live Server
+			"http://localhost:8080", "http://127.0.0.1:8080", // 다른 일반적인 포트
+			"http://localhost:8081", "http://127.0.0.1:8081",
+			"http://localhost:4000", "http://127.0.0.1:4000",
+			"http://localhost", "http://127.0.0.1", // 기본 포트(80)
+
+			// 프로덕션 도메인
+			"https://kakaotech.my", "https://www.kakaotech.my",
+			"http://kakaotech.my", "http://www.kakaotech.my",
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
