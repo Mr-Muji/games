@@ -152,8 +152,8 @@ func main() {
 		port = "8080" // 기본 포트
 	}
 
-	log.Printf("서버가 http://0.0.0.0:%s 에서 실행 중입니다", port)
-	router.Run("0.0.0.0:" + port) // 명시적으로 모든 네트워크 인터페이스에 바인딩
+	log.Printf("서버가 http://localhost:%s 에서 실행 중입니다", port)
+	router.Run(":" + port)
 }
 
 // signupHandler 함수는 회원가입을 처리합니다.
