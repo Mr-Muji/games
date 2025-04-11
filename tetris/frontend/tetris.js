@@ -22,7 +22,8 @@ const COLORS = [                  // 테트로미노 색상 배열
     '#F538FF', // O - 분홍
     '#FF8E0D', // S - 주황
     '#FFE138', // T - 노랑
-    '#3877FF'  // Z - 남색
+    '#3877FF', // Z - 남색
+    '#000000'  // 장애물 블록 - 검정색 (추가)
 ];
 
 // 테트로미노 모양 정의 (I, J, L, O, S, T, Z)
@@ -69,6 +70,10 @@ const SHAPES = [
         [7, 7, 0],
         [0, 7, 7],
         [0, 0, 0]
+    ],
+    // 1x1 크기의 검은 장애물 블록 모양 추가 (SHAPES 배열 마지막에 추가)
+    [
+        [8]
     ]
 ];
 
@@ -81,13 +86,20 @@ let score = 0;
 let level = 1;
 let lines = 0;
 let dropStart = Date.now();
-let dropInterval = 1000;
+let dropInterval = 500;
 let piece = null;
 let nextPiece = null;
 let animationId = null;
 
 // 게임 시작 키 입력을 무시하기 위한 플래그 추가
 let isStartKeyPressed = false;
+
+// 장애물 관련 변수들 추가 (게임 상태 변수 섹션 근처에 추가)
+const OBSTACLE_TYPE = 8; // 장애물 블록 타입
+let obstacleMode = false; // 장애물 모드 활성화 여부
+let obstacleTimer = 0; // 장애물 타이머
+let obstacleInterval = 15000; // 장애물 모드 간격 (15초)
+let obstacleDuration = 3000; // 장애물 모드 지속 시간 (3초)
 
 // 캔버스 크기 설정
 canvas.width = COLS * BLOCK_SIZE;
@@ -154,8 +166,12 @@ function startGame() {
     score = 0;
     level = 1;
     lines = 0;
-    dropInterval = 1000;
+    dropInterval = 500;
     dropStart = Date.now();
+    
+    // 장애물 관련 변수 초기화
+    obstacleMode = false;
+    obstacleTimer = Date.now();
     
     updateScore();
     startButton.textContent = '게임 재시작';
@@ -396,7 +412,7 @@ function clearLines() {
         score += linePoints[linesCleared - 1] * level;
         lines += linesCleared;
         level = Math.floor(lines / 10) + 1;
-        dropInterval = Math.max(100, 1000 - (level - 1) * 100);
+        dropInterval = Math.max(100, 500 - (level - 1) * 100);
         
         updateScore();
     }
@@ -431,6 +447,15 @@ function gameLoop() {
     
     const now = Date.now();
     const delta = now - dropStart;
+    
+    // 레벨 2 이상이고 장애물 모드가 아닐 때 장애물 타이머 관리
+    if (level >= 2 && !obstacleMode) {
+        // 장애물 타이머 갱신
+        if (now - obstacleTimer > obstacleInterval) {
+            obstacleTimer = now;
+            startObstacleStorm();
+        }
+    }
     
     if (delta > dropInterval) {
         dropPiece();
@@ -587,4 +612,60 @@ window.onload = function() {
     }
     
     console.log('테트리스 초기화 완료!');
-}; 
+};
+
+// 검은 블록을 떨어뜨리는 함수 (새로 추가)
+function dropObstacle() {
+    // 랜덤한 x 좌표에 장애물 생성
+    const x = Math.floor(Math.random() * COLS);
+    
+    // 새 장애물 블록 생성
+    const obstacle = {
+        type: OBSTACLE_TYPE,
+        shape: SHAPES[OBSTACLE_TYPE],
+        x: x,
+        y: 0
+    };
+    
+    // 기존 게임 로직으로 처리하기 위해 현재 블록 임시 저장
+    const originalPiece = piece;
+    piece = obstacle;
+    
+    // 블록 충돌 테스트 및 배치
+    // (이미 블록이 있는 위치라면 배치하지 않음)
+    if (!checkCollision()) {
+        // 블록이 바닥에 닿을 때까지 하강
+        while (!checkCollision()) {
+            piece.y++;
+        }
+        piece.y--;
+        lockPiece();
+    }
+    
+    // 원래 조작 중이던 블록으로 복원
+    piece = originalPiece;
+}
+
+// 장애물 폭풍 시작 함수 (새로 추가)
+function startObstacleStorm() {
+    if (level < 2) return; // 레벨 2 이상에서만 작동
+    
+    console.log("장애물 폭풍 시작!");
+    obstacleMode = true;
+    
+    // 0.5초마다 장애물 떨어뜨리기
+    const stormInterval = setInterval(() => {
+        if (!obstacleMode || gameOver || isPaused) {
+            clearInterval(stormInterval);
+            return;
+        }
+        dropObstacle();
+    }, 500);
+    
+    // 지정된 지속 시간 후 장애물 폭풍 종료
+    setTimeout(() => {
+        obstacleMode = false;
+        clearInterval(stormInterval);
+        console.log("장애물 폭풍 종료");
+    }, obstacleDuration);
+} 
