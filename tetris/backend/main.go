@@ -118,8 +118,7 @@ func main() {
 
 	// CORS 미들웨어 추가
 	router.Use(cors.New(cors.Config{
-		//AllowOrigins:     []string{"http://localhost:3000", "http://127.0.0.1:3000", "https://kakaotech.my", "https://*.kakaotech.my"},
-		AllowOrigins:     []string{"*"},
+		AllowOrigins:     []string{"http://localhost:3000", "http://127.0.0.1:3000", "https://kakaotech.my", "https://*.kakaotech.my"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -154,7 +153,7 @@ func main() {
 	}
 
 	log.Printf("서버가 http://localhost:%s 에서 실행 중입니다", port)
-	router.Run(":" + port)
+	router.Run(":" + port)	
 }
 
 // signupHandler 함수는 회원가입을 처리합니다.

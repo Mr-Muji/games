@@ -7,8 +7,24 @@ const loginButton = document.getElementById('login-btn');
 const errorMessage = document.getElementById('error-message');
 const signupLink = document.getElementById('signup-link');
 
-// 백엔드 API URL
-const API_URL = 'http://localhost:8080'; // 필요에 따라 변경
+// 백엔드 API URL - 환경에 따라 동적 설정
+let API_URL = '';
+
+// 현재 호스트명에 따라 백엔드 URL 결정
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    // 로컬 개발 환경
+    API_URL = 'http://localhost:8080';
+} else {
+    // 프로덕션 환경 - 'api.' 서브도메인 사용
+    API_URL = 'https://api.' + window.location.hostname.replace('www.', '');
+    
+    // 또는 도메인이 kakaotech.my인 경우 명시적으로 지정
+    if (window.location.hostname.includes('kakaotech.my')) {
+        API_URL = 'https://api.kakaotech.my';
+    }
+}
+
+console.log('현재 사용 중인 API URL:', API_URL); // 디버깅용
 
 // 입력 필드 유효성 체크 함수
 function validateInputs() {
