@@ -19,3 +19,14 @@ brew install python3
 # 또는 공식 웹사이트에서 설치 패키지 다운로드
 # https://www.python.org/downloads/
 ```
+
+3. frontend 디렉토리로 이동 (현재 위치에 있다면 생략 가능)
+```bash
+cd tetris/frontend
+```
+
+4. Python 내장 HTTP 서버 실행
+```bash
+# Python 3
+python3 -m http.server 3000
+```
