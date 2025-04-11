@@ -116,13 +116,13 @@ func main() {
 	// Gin 라우터 생성
 	router := gin.Default()
 
-	// CORS 미들웨어 추가
+	// CORS 미들웨어 추가 (개발용 - 모든 오리진 허용)
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://127.0.0.1:3000"},
+		AllowOrigins:     []string{"*"}, // 개발 중에는 모든 오리진 허용
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
+		AllowCredentials: true, // true로 설정하려면 AllowOrigins에 * 사용 불가
 		MaxAge:           12 * time.Hour,
 	}))
 
