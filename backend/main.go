@@ -59,6 +59,36 @@ func main() {
 	// API 라우트 설정
 	api.SetupRoutes(router)
 
+	// 정적 파일 서빙 설정
+	router.Static("/assets", "./frontend/assets")
+	router.StaticFile("/", "./frontend/index.html")
+	router.StaticFile("/favicon.ico", "./frontend/favicon.ico")
+
+	// auth 디렉토리 파일 서빙
+	router.StaticFile("/auth/login.html", "./frontend/auth/login.html")
+	router.StaticFile("/auth/login.js", "./frontend/auth/login.js")
+	router.StaticFile("/auth/signup.html", "./frontend/auth/signup.html")
+	router.StaticFile("/auth/signup.js", "./frontend/auth/signup.js")
+
+	// menu 디렉토리 파일 서빙
+	router.StaticFile("/menu/games.html", "./frontend/menu/games.html")
+	router.StaticFile("/menu/games.js", "./frontend/menu/games.js")
+
+	// games 디렉토리 관련 파일 서빙 (테트리스 등)
+	router.Static("/games", "./frontend/games")
+
+	// 존재하지 않는 경로 처리 (SPA 지원)
+	router.NoRoute(func(c *gin.Context) {
+		// /api로 시작하는 경로는 API 요청이므로 404 반환
+		if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
+			c.JSON(404, gin.H{"message": "API 경로를 찾을 수 없습니다"})
+			return
+		}
+
+		// 일반 경로는 index.html로 리다이렉션 (SPA 방식)
+		c.File("./frontend/index.html")
+	})
+
 	// 기본 루트 경로 추가 (API 상태 확인용)
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
