@@ -61,7 +61,6 @@ func main() {
 
 	// 정적 파일 서빙 설정
 	router.Static("/assets", "./frontend/assets")
-	router.StaticFile("/", "./frontend/index.html")
 	router.StaticFile("/favicon.ico", "./frontend/favicon.ico")
 
 	// auth 디렉토리 파일 서빙
@@ -79,21 +78,13 @@ func main() {
 
 	// 존재하지 않는 경로 처리 (SPA 지원)
 	router.NoRoute(func(c *gin.Context) {
-		// /api로 시작하는 경로는 API 요청이므로 404 반환
-		if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
-			c.JSON(404, gin.H{"message": "API 경로를 찾을 수 없습니다"})
+		// API 경로가 아니면 index.html로 리다이렉션
+		if len(c.Request.URL.Path) < 4 || c.Request.URL.Path[:4] != "/api" {
+			c.File("./frontend/index.html")
 			return
 		}
-
-		// 일반 경로는 index.html로 리다이렉션 (SPA 방식)
-		c.File("./frontend/index.html")
-	})
-
-	// 기본 루트 경로 추가 (API 상태 확인용)
-	router.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "게임 플랫폼 API가 실행 중입니다",
-		})
+		// API 경로는 404 반환
+		c.JSON(404, gin.H{"message": "API 경로를 찾을 수 없습니다"})
 	})
 
 	// 서버 포트 설정 및 실행
