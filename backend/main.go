@@ -76,6 +76,11 @@ func main() {
 	// games 디렉토리 관련 파일 서빙 (테트리스 등)
 	router.Static("/games", "./frontend/games")
 
+	// 1. 특정 URL에 대한 리다이렉션
+	router.GET("/login.html", func(c *gin.Context) {
+		c.Redirect(301, "/auth/login.html")
+	})
+
 	// 존재하지 않는 경로 처리 (SPA 지원)
 	router.NoRoute(func(c *gin.Context) {
 		// API 경로가 아니면 index.html로 리다이렉션
