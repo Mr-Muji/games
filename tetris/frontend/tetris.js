@@ -170,7 +170,7 @@ function startGame() {
     dropStart = Date.now();
     
     // 장애물 관련 변수 초기화
-    obstacleMode = false;
+    obstacleMode = true;
     obstacleTimer = Date.now();
     
     updateScore();
@@ -560,20 +560,28 @@ if (menuButton) {
 window.onload = function() {
     console.log('테트리스 초기화 시작...');
     
-    // DOM 요소 확인
+    // DOM 요소 확인 (이 부분은 그대로 유지!)
     console.log('start-btn 요소:', startButton);
     console.log('pause-btn 요소:', pauseButton);
     console.log('menu-btn 요소:', menuButton);
     
-    // 로그인 확인
+    // 개발 모드 여부 확인 (URL 파라미터로 확인)
+    const isDevMode = window.location.search.includes('dev=true');
+    
+    // 로그인 확인 (개발 모드에서는 건너뛰기)
     const token = localStorage.getItem('token');
-    if (!token) {
+    if (!token && !isDevMode) {
         console.log('로그인 필요, 리다이렉트...');
         window.location.href = 'login.html';
         return;
+    } else if (isDevMode) {
+        // 개발 모드에서는 임시 토큰 설정
+        console.log('개발 모드 활성화: 자동 로그인');
+        localStorage.setItem('token', 'dev-token');
+        localStorage.setItem('username', '개발자');
     }
     
-    // 사용자 이름 표시
+    // 사용자 이름 표시 (기존 코드 유지)
     const username = localStorage.getItem('username');
     if (username) {
         const gameTitle = document.querySelector('.game-info h1');
@@ -583,17 +591,15 @@ window.onload = function() {
         }
     }
     
-    // 모든 이벤트 리스너 제거
+    // 이벤트 리스너 관련 코드 (기존 코드 유지)
     document.removeEventListener('keydown', handleKeyPress);
     window.removeEventListener('keydown', handleKeyPress);
-    
-    // 한 번만 등록
     document.addEventListener('keydown', handleKeyPress);
     
     // 게임 초기화
     init();
     
-    // 이벤트 리스너 명시적 추가
+    // 이벤트 리스너 명시적 추가 (기존 코드 유지)
     startButton.onclick = function() {
         console.log('시작 버튼 클릭됨');
         startGame();
