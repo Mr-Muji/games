@@ -1,0 +1,78 @@
+/* 전체 사이트에 적용되는 기본 스타일 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f5f5f5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+button {
+    cursor: pointer;
+}
+
+/* 컨테이너 공통 스타일 */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* 폼 요소 공통 스타일 */
+input, button {
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+/* 링크 스타일 */
+a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* 버튼 스타일 */
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #3498db;
+    color: white;
+    text-align: center;
+    transition: background-color 0.3s;
+}
+
+.btn:hover {
+    background-color: #2980b9;
+}
+
+.btn-danger {
+    background-color: #e74c3c;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+/* 에러 메시지 스타일 */
+.error-message {
+    color: #e74c3c;
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: rgba(231, 76, 60, 0.1);
+} 

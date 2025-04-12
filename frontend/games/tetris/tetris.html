@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>테트리스 게임</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        
+        /* 게임 컨테이너를 중앙에 배치 */
+        .game-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            max-width: 900px;
+            width: 100%;
+            margin: 20px auto;
+        }
+        
+        .game-area {
+            display: flex;
+            flex-direction: row; /* 가로 방향으로 배치 변경 */
+            align-items: flex-start; /* 상단 정렬 */
+            gap: 20px; /* 간격 추가 */
+        }
+        
+        .status-container {
+            display: flex;
+            flex-direction: column; /* 세로 방향으로 변경 */
+            gap: 20px;
+            width: 150px; /* 왼쪽 패널 너비 설정 */
+        }
+        
+        .score-container {
+            background-color: rgba(52, 152, 219, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .score-container > div {
+            margin-bottom: 10px;
+        }
+        
+        #next-piece-container {
+            background-color: rgba(52, 152, 219, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .canvas-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #tetris-canvas {
+            border: 2px solid #333;
+            background-color: #fff;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            width: 300px; /* 버튼 너비 맞추기 */
+            justify-content: center;
+        }
+        
+        .controls button {
+            padding: 8px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .controls button:hover {
+            background-color: #2980b9;
+        }
+        
+        .ranking-container {
+            width: 280px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .ranking-title {
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #ffcc00;
+        }
+        
+        .ranking-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .ranking-item {
+            display: flex;
+            padding: 8px 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .rank-position {
+            width: 30px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .rank-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .rank-score {
+            width: 80px;
+            text-align: right;
+            font-weight: bold;
+            color: #ffcc00;
+        }
+        
+        .my-rank {
+            background-color: rgba(255, 204, 0, 0.2);
+            border-radius: 5px;
+        }
+        
+        .quick-controls {
+            background-color: rgba(52, 152, 219, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .quick-controls h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .quick-controls ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .quick-controls li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-area">
+            <!-- 상태 정보를 왼쪽으로 이동 -->
+            <div class="status-container">
+                <div class="score-container">
+                    <div id="score-display">점수: 0</div>
+                    <div id="level-display">레벨: 1</div>
+                    <div id="lines-display">라인: 0</div>
+                    <!-- 콤보 표시 추가 -->
+                    <div id="combo" style="display: none; color: gold;">콤보: 0</div>
+                </div>
+                
+                <div id="next-piece-container">
+                    <div>다음 블록:</div>
+                    <canvas id="next-piece-preview" width="100" height="100"></canvas>
+                </div>
+                
+                <!-- 간단한 조작법 추가 -->
+                <div class="quick-controls">
+                    <h4>조작법</h4>
+                    <ul>
+                        <li>← → : 이동</li>
+                        <li>↑ : 회전</li>
+                        <li>↓ : 천천히 내리기</li>
+                        <li>스페이스 : 즉시 내리기</li>
+                        <li>ESC : 일시정지</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- 게임 캔버스 중앙으로 -->
+            <div class="canvas-container">
+                <canvas id="tetris-canvas" width="300" height="600"></canvas>
+                
+                <div class="controls">
+                    <button id="start-button">게임 시작</button>
+                    <button id="pause-button">일시정지 (ESC)</button>
+                    <button id="menu-button">메뉴</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="ranking-container">
+            <h3 class="ranking-title">👑 테트리스 랭킹 TOP 10 👑</h3>
+            <ul id="ranking-list" class="ranking-list">
+                <li class="ranking-item">
+                    <span class="rank-position">-</span>
+                    <span class="rank-name">로딩 중...</span>
+                    <span class="rank-score">-</span>
+                </li>
+            </ul>
+            
+            <div style="margin-top: 20px;">
+                <h3 class="ranking-title">🏆 내 최고 기록 🏆</h3>
+                <div id="my-best-score" style="text-align: center; margin-top: 10px;">
+                    로딩 중...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="tetris.js"></script>
+</body>
+</html> 

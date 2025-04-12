@@ -1,4 +1,4 @@
-// login.js - 로그인 및 회원가입 관련 스크립트
+// login.js - 로그인 관련 스크립트
 
 // DOM 요소
 const usernameInput = document.getElementById('username');
@@ -77,8 +77,13 @@ async function handleLogin() {
         localStorage.setItem('token', data.token);
         localStorage.setItem('username', username);
         
+        // 닉네임이 있으면 저장
+        if (data.nickname) {
+            localStorage.setItem('nickname', data.nickname);
+        }
+        
         // 게임 선택 페이지로 이동
-        window.location.href = 'games.html';
+        window.location.href = '../menu/games.html';
         
     } catch (error) {
         console.error('로그인 오류:', error);
@@ -86,39 +91,15 @@ async function handleLogin() {
     }
 }
 
-// 회원가입 페이지로 이동 함수
-function handleSignup() {
-    // 간단하게 창을 띄워 회원가입 정보를 입력받음
-    const username = prompt('사용할 아이디를 입력하세요:');
-    const password = prompt('사용할 비밀번호를 입력하세요:');
-    
-    if (!username || !password) return;
-    
-    // 회원가입 API 요청
-    fetch(`${API_URL}/signup`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, password })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.id) {
-            alert('회원가입이 완료되었습니다. 로그인해주세요.');
-        } else {
-            alert(data.message || '회원가입에 실패했습니다.');
-        }
-    })
-    .catch(error => {
-        console.error('회원가입 오류:', error);
-        alert('서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
-    });
+// 회원가입 링크 처리 함수
+function handleSignupClick(e) {
+    e.preventDefault();
+    window.location.href = 'signup.html';
 }
 
-// 이벤트 리스너 설정
+// 이벤트 리스너
 loginButton.addEventListener('click', handleLogin);
-signupLink.addEventListener('click', handleSignup);
+signupLink.addEventListener('click', handleSignupClick);
 
 // 엔터 키 이벤트 처리
 passwordInput.addEventListener('keypress', function(e) {

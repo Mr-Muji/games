@@ -1,0 +1,143 @@
+/* 기본 스타일 초기화 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* 전체 페이지 스타일 */
+body {
+    font-family: 'Nanum Gothic', 'Malgun Gothic', sans-serif;
+    background-color: #f0f0f0;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+/* 게임 컨테이너 */
+.container {
+    display: flex;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    overflow: visible;
+    padding: 20px;
+    margin: 0 auto;
+    max-width: 100%;
+}
+
+/* 게임 정보 영역 */
+.game-info {
+    width: 200px;
+    padding: 20px;
+    background-color: #f8f8f8;
+    border-radius: 8px;
+    margin-right: 20px;
+}
+
+.game-info h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #2c3e50;
+}
+
+.score-container {
+    margin-bottom: 20px;
+    background-color: #ecf0f1;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.score-container p {
+    margin: 5px 0;
+    font-weight: bold;
+}
+
+.next-piece {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.next-piece h2 {
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+/* 게임 조작 버튼 */
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.controls button {
+    padding: 8px 0;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.controls button:hover {
+    background-color: #2980b9;
+}
+
+/* 게임 조작법 설명 */
+.instructions {
+    background-color: #ecf0f1;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.instructions h2 {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.instructions p {
+    font-size: 14px;
+    margin: 5px 0;
+}
+
+/* 게임 보드 */
+.game-board {
+    border: 2px solid #2c3e50;
+    border-radius: 5px;
+    overflow: hidden;
+    background-color: #ecf0f1;
+    width: 300px;  /* COLS * BLOCK_SIZE와 정확히 일치 */
+    height: 600px; /* ROWS * BLOCK_SIZE와 정확히 일치 */
+}
+
+#board {
+    background-color: #ecf0f1;
+    display: block;
+    margin: 0;
+}
+
+/* 캔버스 스타일 */
+canvas {
+    display: block;
+}
+
+/* 반응형 디자인을 위한 미디어 쿼리 추가 */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .game-info {
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 20px;
+    }
+} 

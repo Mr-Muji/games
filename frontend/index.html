@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>게임 플랫폼</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        
+        .loading {
+            text-align: center;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">
+        <div class="spinner"></div>
+        <p>게임 플랫폼 로딩 중...</p>
+    </div>
+
+    <script>
+        // 페이지가 로드되면 로그인 여부에 따라 적절한 페이지로 리디렉션
+        document.addEventListener('DOMContentLoaded', function() {
+            // 로그인 토큰 확인
+            const token = localStorage.getItem('token');
+            
+            // 로그인 상태에 따라 리디렉션
+            if (token) {
+                // 로그인된 경우 게임 메뉴로 이동
+                window.location.href = 'menu/games.html';
+            } else {
+                // 로그인되지 않은 경우 로그인 페이지로 이동
+                window.location.href = 'auth/login.html';
+            }
+        });
+    </script>
+</body>
+</html>
