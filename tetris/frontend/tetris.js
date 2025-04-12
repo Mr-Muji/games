@@ -22,8 +22,7 @@ const COLORS = [                  // 테트로미노 색상 배열
     '#F538FF', // O - 분홍
     '#FF8E0D', // S - 주황
     '#FFE138', // T - 노랑
-    '#3877FF', // Z - 남색
-    '#000000'  // 장애물 블록 - 검정색 (추가)
+    '#3877FF'  // Z - 남색
 ];
 
 // 테트로미노 모양 정의 (I, J, L, O, S, T, Z)
@@ -70,10 +69,6 @@ const SHAPES = [
         [7, 7, 0],
         [0, 7, 7],
         [0, 0, 0]
-    ],
-    // 1x1 크기의 검은 장애물 블록 모양 추가 (SHAPES 배열 마지막에 추가)
-    [
-        [8]
     ]
 ];
 
@@ -93,13 +88,6 @@ let animationId = null;
 
 // 게임 시작 키 입력을 무시하기 위한 플래그 추가
 let isStartKeyPressed = false;
-
-// 장애물 관련 변수들 추가 (게임 상태 변수 섹션 근처에 추가)
-const OBSTACLE_TYPE = 8; // 장애물 블록 타입
-let obstacleMode = false; // 장애물 모드 활성화 여부
-let obstacleTimer = 0; // 장애물 타이머
-let obstacleInterval = 15000; // 장애물 모드 간격 (15초)
-let obstacleDuration = 3000; // 장애물 모드 지속 시간 (3초)
 
 // 캔버스 크기 설정
 canvas.width = COLS * BLOCK_SIZE;
@@ -168,10 +156,6 @@ function startGame() {
     lines = 0;
     dropInterval = 500;
     dropStart = Date.now();
-    
-    // 장애물 관련 변수 초기화
-    obstacleMode = true;
-    obstacleTimer = Date.now();
     
     updateScore();
     startButton.textContent = '게임 재시작';
@@ -272,14 +256,16 @@ function updateScore() {
     linesElement.textContent = lines;
 }
 
-// 충돌 검사
-function checkCollision() {
-    for (let row = 0; row < piece.shape.length; row++) {
-        for (let col = 0; col < piece.shape[row].length; col++) {
-            if (piece.shape[row][col] !== 0) {
-                const x = piece.x + col;
-                const y = piece.y + row;
+// 충돌 검사 함수
+function checkCollision(p = piece) {
+    // p 매개변수는 기본값으로 현재 piece를 사용하지만, 다른 피스로 테스트할 수도 있음
+    for (let row = 0; row < p.shape.length; row++) {
+        for (let col = 0; col < p.shape[row].length; col++) {
+            if (p.shape[row][col] !== 0) {
+                const x = p.x + col;
+                const y = p.y + row;
                 
+                // 벽이나 바닥, 또는 다른 블록과 충돌 확인
                 if (x < 0 || x >= COLS || y >= ROWS || 
                    (y >= 0 && board[y][x] !== 0)) {
                     return true;
@@ -378,7 +364,7 @@ function hardDrop() {
     lockPiece();
 }
 
-// 블록 고정
+// 블록 고정 함수
 function lockPiece() {
     for (let row = 0; row < piece.shape.length; row++) {
         for (let col = 0; col < piece.shape[row].length; col++) {
@@ -387,6 +373,7 @@ function lockPiece() {
                 const x = piece.x + col;
                 
                 if (y < 0) {
+                    console.log("보드 위로 넘어감: 게임 오버");
                     gameOver = true;
                     showGameOver();
                     return;
@@ -399,15 +386,33 @@ function lockPiece() {
     
     clearLines();
     
-    piece = nextPiece;
+    // 새 블록 생성 및 충돌 확인
+    const newPiece = nextPiece;
     nextPiece = randomPiece();
     
-    if (checkCollision()) {
+    // 게임 오버 조건: 새 블록이 기존 블록과 겹치는지 확인
+    if (checkCollision(newPiece)) {
+        console.log("새 블록 충돌 감지: 게임 오버");
+        
+        // 충돌 상태를 시각적으로 보여주기 위해 블록 배치
+        piece = newPiece;
+        drawBoard();
+        
+        // 게임 오버 처리
         gameOver = true;
         showGameOver();
-    } else {
-        drawNextPiece();
+        
+        // 애니메이션 프레임 취소
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+        return;
     }
+    
+    // 충돌이 없으면 계속 진행
+    piece = newPiece;
+    drawNextPiece();
 }
 
 // 라인 제거
@@ -452,12 +457,18 @@ function clearLines() {
     }
 }
 
-// 게임 오버 화면
+// 게임 오버 화면 함수
 function showGameOver() {
-    cancelAnimationFrame(animationId);
-    animationId = null;
-    isPlaying = false;
+    // 게임 루프 정지
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    }
     
+    isPlaying = false;
+    gameOver = true;
+    
+    // 게임 오버 화면 표시
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -470,11 +481,15 @@ function showGameOver() {
     ctx.fillText(`최종 점수: ${score}`, canvas.width / 2, canvas.height / 2 + 10);
     ctx.fillText('아무 키나 눌러 다시 시작', canvas.width / 2, canvas.height / 2 + 50);
     
+    // 점수 저장
     saveScore();
+    
+    console.log("게임 오버 화면 표시됨");
 }
 
 // 게임 루프
 function gameLoop() {
+    // 게임 오버 또는 일시정지면 루프 중단
     if (gameOver || isPaused) {
         return;
     }
@@ -482,21 +497,15 @@ function gameLoop() {
     const now = Date.now();
     const delta = now - dropStart;
     
-    // 레벨 2 이상이고 장애물 모드가 아닐 때 장애물 타이머 관리
-    if (level >= 2 && !obstacleMode) {
-        // 장애물 타이머 갱신
-        if (now - obstacleTimer > obstacleInterval) {
-            obstacleTimer = now;
-            startObstacleStorm();
-        }
-    }
-    
     if (delta > dropInterval) {
         dropPiece();
     }
     
-    drawBoard();
-    animationId = requestAnimationFrame(gameLoop);
+    // 현재 게임 상태가 여전히 유효한지 확인
+    if (!gameOver) {
+        drawBoard();
+        animationId = requestAnimationFrame(gameLoop);
+    }
 }
 
 // 키보드 입력 처리
@@ -578,7 +587,6 @@ function saveScore() {
 }
 
 // 이벤트 리스너
-// document.addEventListener('keydown', handleKeyPress);
 startButton.addEventListener('click', startGame);
 pauseButton.addEventListener('click', togglePause);
 
@@ -594,7 +602,7 @@ if (menuButton) {
 window.onload = function() {
     console.log('테트리스 초기화 시작...');
     
-    // DOM 요소 확인 (이 부분은 그대로 유지!)
+    // DOM 요소 확인
     console.log('start-btn 요소:', startButton);
     console.log('pause-btn 요소:', pauseButton);
     console.log('menu-btn 요소:', menuButton);
@@ -615,7 +623,7 @@ window.onload = function() {
         localStorage.setItem('username', '개발자');
     }
     
-    // 사용자 이름 표시 (기존 코드 유지)
+    // 사용자 이름 표시
     const username = localStorage.getItem('username');
     if (username) {
         const gameTitle = document.querySelector('.game-info h1');
@@ -625,7 +633,7 @@ window.onload = function() {
         }
     }
     
-    // 이벤트 리스너 관련 코드 (기존 코드 유지)
+    // 이벤트 리스너 관련 코드
     document.removeEventListener('keydown', handleKeyPress);
     window.removeEventListener('keydown', handleKeyPress);
     document.addEventListener('keydown', handleKeyPress);
@@ -633,7 +641,7 @@ window.onload = function() {
     // 게임 초기화
     init();
     
-    // 이벤트 리스너 명시적 추가 (기존 코드 유지)
+    // 이벤트 리스너 명시적 추가
     startButton.onclick = function() {
         console.log('시작 버튼 클릭됨');
         startGame();
@@ -653,59 +661,3 @@ window.onload = function() {
     
     console.log('테트리스 초기화 완료!');
 };
-
-// 검은 블록을 떨어뜨리는 함수 (새로 추가)
-function dropObstacle() {
-    // 랜덤한 x 좌표에 장애물 생성
-    const x = Math.floor(Math.random() * COLS);
-    
-    // 새 장애물 블록 생성
-    const obstacle = {
-        type: OBSTACLE_TYPE,
-        shape: SHAPES[OBSTACLE_TYPE],
-        x: x,
-        y: 0
-    };
-    
-    // 기존 게임 로직으로 처리하기 위해 현재 블록 임시 저장
-    const originalPiece = piece;
-    piece = obstacle;
-    
-    // 블록 충돌 테스트 및 배치
-    // (이미 블록이 있는 위치라면 배치하지 않음)
-    if (!checkCollision()) {
-        // 블록이 바닥에 닿을 때까지 하강
-        while (!checkCollision()) {
-            piece.y++;
-        }
-        piece.y--;
-        lockPiece();
-    }
-    
-    // 원래 조작 중이던 블록으로 복원
-    piece = originalPiece;
-}
-
-// 장애물 폭풍 시작 함수 (새로 추가)
-function startObstacleStorm() {
-    if (level < 2) return; // 레벨 2 이상에서만 작동
-    
-    console.log("장애물 폭풍 시작!");
-    obstacleMode = true;
-    
-    // 0.5초마다 장애물 떨어뜨리기
-    const stormInterval = setInterval(() => {
-        if (!obstacleMode || gameOver || isPaused) {
-            clearInterval(stormInterval);
-            return;
-        }
-        dropObstacle();
-    }, 500);
-    
-    // 지정된 지속 시간 후 장애물 폭풍 종료
-    setTimeout(() => {
-        obstacleMode = false;
-        clearInterval(stormInterval);
-        console.log("장애물 폭풍 종료");
-    }, obstacleDuration);
-} 
