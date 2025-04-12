@@ -90,6 +90,7 @@ let combo = 0;
 let lastClearWasCombo = false;
 let lastGarbageTime = 0;
 const garbageInterval = 12000;
+const LEVEL_UP_INTERVAL = 30000;   // 레벨업 간격: 30초 (밀리초)
 
 // Lock delay 관련 변수
 let isLocked = false;         // 블록이 잠금 상태인지 여부
@@ -206,8 +207,9 @@ function startGame() {
     score = 0;
     level = 1;
     lines = 0;
-    dropInterval = 500;
+    dropInterval = 500; // 초기 속도 설정
     dropStart = Date.now();
+    gameStartTime = Date.now(); // 게임 시작 시간 저장
     combo = 0;
     lastClearWasCombo = false;
     lastGarbageTime = Date.now();
@@ -590,36 +592,32 @@ function clearLines() {
     if (linesCleared > 0) {
         // 라인 클리어시 콤보 처리
         if (lastClearWasCombo) {
-            combo++; // 연속 라인 클리어시 콤보 증가
+            combo++;
         } else {
-            combo = 1; // 첫 라인 클리어
+            combo = 1;
             lastClearWasCombo = true;
         }
         
         const linePoints = [40, 100, 300, 1200]; // 1, 2, 3, 4줄
-        let comboBonus = 0;
+        // 레벨에 따라 점수 증가
+        let lineScore = linePoints[Math.min(linesCleared, 4) - 1] * level;
         
+        // 콤보 보너스 - 레벨에 따라 보너스 증가
+        const comboBonus = combo > 1 ? (combo - 1) * 50 * level : 0;
+        
+        // 점수 추가
+        score += lineScore + comboBonus;
+        lines += linesCleared;
+        
+        // 콤보 메시지 표시
         if (combo > 1) {
-            // 콤보 보너스 점수 계산 (콤보가 2 이상일 때부터 적용)
-            comboBonus = 50 * combo * level;
-            
-            // 콤보 메시지 표시 (선택사항)
             showComboMessage(combo, comboBonus);
         }
         
-        // 기본 점수 + 콤보 보너스
-        score += linePoints[linesCleared - 1] * level + comboBonus;
-        lines += linesCleared;
-        level = Math.floor(lines / 10) + 1;
-        dropInterval = Math.max(100, 500 - (level - 1) * 100);
-        
         updateScore();
     } else {
-        // 라인을 클리어하지 못했으면 콤보 초기화
-        if (lastClearWasCombo) {
-            lastClearWasCombo = false;
-            combo = 0;
-        }
+        lastClearWasCombo = false;
+        combo = 0;
     }
 }
 
@@ -691,6 +689,27 @@ function gameLoop() {
     
     const now = Date.now();
     const delta = now - dropStart;
+    
+    // 시간 기반 레벨업 시스템 추가
+    if (isPlaying) {
+        const gameTime = now - gameStartTime;
+        // 시간에 따라 레벨 계산 (30초당 1레벨씩 상승)
+        const newLevel = Math.floor(gameTime / LEVEL_UP_INTERVAL) + 1;
+        
+        // 레벨이 변경된 경우 처리
+        if (newLevel > level) {
+            level = newLevel;
+            // 레벨에 따른 dropInterval 계산
+            dropInterval = Math.max(50, 500 - ((level - 1) * 40));
+            console.log(`레벨 업! 레벨 ${level}, 드롭 간격: ${dropInterval}ms`);
+            
+            // 레벨업 시각적 효과
+            showLevelUpMessage(level);
+            
+            // 점수 화면 갱신
+            updateScore();
+        }
+    }
     
     // lock delay 처리
     if (isLocked) {
@@ -998,6 +1017,23 @@ function addGarbageLines(lines = 1) {
     // 보드 다시 그리기
     drawBoard();
     return true;
+}
+
+// 레벨업 메시지 표시 함수 추가 (showComboMessage 함수 뒤에 추가)
+function showLevelUpMessage(level) {
+    // 캔버스 중앙에 레벨업 메시지 표시
+    ctx.save(); // 현재 컨텍스트 상태 저장
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, canvas.height/2 - 40, canvas.width, 80);
+    
+    ctx.font = '28px Arial';
+    ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+    ctx.textAlign = 'center';
+    ctx.fillText(`레벨 업! ${level}`, canvas.width / 2, canvas.height / 2);
+    ctx.font = '18px Arial';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.fillText(`점수 보너스 x${level}`, canvas.width / 2, canvas.height / 2 + 30);
+    ctx.restore(); // 컨텍스트 상태 복원
 }
 
 // 이벤트 리스너
