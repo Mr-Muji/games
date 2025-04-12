@@ -4,6 +4,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -59,8 +60,31 @@ func main() {
 	// API 라우트 설정
 	api.SetupRoutes(router)
 
-	// 정적 파일 서빙 설정
+	// 정적 파일 서빙 시 캐시 버스팅을 위한 미들웨어
+	router.Use(func(c *gin.Context) {
+		// 정적 파일 요청에 대해서만 캐시 제어 헤더 추가
+		path := c.Request.URL.Path
+		if strings.HasSuffix(path, ".html") ||
+			strings.HasSuffix(path, ".js") ||
+			strings.HasSuffix(path, ".css") {
+			c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+			c.Header("Pragma", "no-cache")
+			c.Header("Expires", "0")
+		}
+		c.Next()
+	})
+
+	// 정적 파일 서빙
 	router.Static("/assets", "./frontend/assets")
+	router.Static("/auth", "./frontend/auth")
+	router.Static("/menu", "./frontend/menu")
+	router.Static("/games", "./frontend/games")
+
+	// 메인 페이지
+	router.GET("/", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.File("./frontend/index.html")
+	})
 	router.StaticFile("/favicon.ico", "./frontend/favicon.ico")
 
 	// auth 디렉토리 파일 서빙
