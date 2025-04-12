@@ -300,11 +300,14 @@ function movePiece(dir) {
     }
 }
 
-// 블록 회전
+// 블록 회전 - 월 킥 시스템 추가
 function rotatePiece() {
     const originalShape = piece.shape;
+    const originalX = piece.x;
+    const originalY = piece.y;
     const length = originalShape.length;
     
+    // 회전된 모양 계산
     const rotated = [];
     for (let i = 0; i < length; i++) {
         rotated[i] = [];
@@ -313,13 +316,44 @@ function rotatePiece() {
         }
     }
     
+    // 원래 모양 저장
     piece.shape = rotated;
     
-    if (checkCollision()) {
-        piece.shape = originalShape;
-    } else {
+    // 기본 위치에서 충돌 여부 확인
+    if (!checkCollision()) {
+        // 충돌 없음 - 회전 성공
         drawBoard();
+        return;
     }
+    
+    // 월 킥 시도 - 여러 위치 시도
+    const kicks = [
+        {x: 1, y: 0},   // 오른쪽으로 1칸
+        {x: -1, y: 0},  // 왼쪽으로 1칸
+        {x: 0, y: -1},  // 위로 1칸
+        {x: 2, y: 0},   // 오른쪽으로 2칸
+        {x: -2, y: 0},  // 왼쪽으로 2칸
+        {x: 0, y: -2},  // 위로 2칸
+        {x: 1, y: -1},  // 오른쪽 위로 1칸
+        {x: -1, y: -1}  // 왼쪽 위로 1칸
+    ];
+    
+    // 여러 위치에서 시도
+    for (const kick of kicks) {
+        piece.x = originalX + kick.x;
+        piece.y = originalY + kick.y;
+        
+        if (!checkCollision()) {
+            // 충돌 없는 위치 찾음 - 회전 성공
+            drawBoard();
+            return;
+        }
+    }
+    
+    // 모든 킥 위치에서 실패 - 원래 상태로 복원
+    piece.shape = originalShape;
+    piece.x = originalX;
+    piece.y = originalY;
 }
 
 // 블록 내리기
