@@ -276,6 +276,26 @@ function drawBoard() {
             }
         }
     }
+    
+    // 격자선 그리기
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; // 격자선 색상
+    ctx.lineWidth = 1; // 격자선 두께
+
+    // 수직 격자선 그리기
+    for (let x = 0; x < COLS; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * BLOCK_SIZE, 0);
+        ctx.lineTo(x * BLOCK_SIZE, ROWS * BLOCK_SIZE);
+        ctx.stroke();
+    }
+
+    // 수평 격자선 그리기
+    for (let y = 0; y < ROWS; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * BLOCK_SIZE);
+        ctx.lineTo(COLS * BLOCK_SIZE, y * BLOCK_SIZE);
+        ctx.stroke();
+    }
 }
 
 // 다음 블록 그리기
