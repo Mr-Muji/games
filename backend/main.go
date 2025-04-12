@@ -87,19 +87,6 @@ func main() {
 	})
 	router.StaticFile("/favicon.ico", "./frontend/favicon.ico")
 
-	// auth 디렉토리 파일 서빙
-	router.StaticFile("/auth/login.html", "./frontend/auth/login.html")
-	router.StaticFile("/auth/login.js", "./frontend/auth/login.js")
-	router.StaticFile("/auth/signup.html", "./frontend/auth/signup.html")
-	router.StaticFile("/auth/signup.js", "./frontend/auth/signup.js")
-
-	// menu 디렉토리 파일 서빙
-	router.StaticFile("/menu/games.html", "./frontend/menu/games.html")
-	router.StaticFile("/menu/games.js", "./frontend/menu/games.js")
-
-	// games 디렉토리 관련 파일 서빙 (테트리스 등)
-	router.Static("/games", "./frontend/games")
-
 	// 1. 특정 URL에 대한 리다이렉션
 	router.GET("/login.html", func(c *gin.Context) {
 		c.Redirect(301, "/auth/login.html")
