@@ -278,8 +278,8 @@ function drawBoard() {
     }
     
     // 격자선 그리기
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; // 격자선 색상
-    ctx.lineWidth = 1; // 격자선 두께
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)'; // 격자선 색상: 반투명 검은색
+    ctx.lineWidth = 2; // 격자선 두께: 두껍게 설정
 
     // 수직 격자선 그리기
     for (let x = 0; x < COLS; x++) {
