@@ -86,10 +86,17 @@ let dropInterval = 500;
 let piece = null;
 let nextPiece = null;
 let animationId = null;
-let combo = 0;  // 콤보 카운터 추가
-let lastClearWasCombo = false; // 마지막 드롭에서 라인 클리어 여부
-let lastGarbageTime = 0;       // 마지막으로 검은 블록이 올라온 시간
-const garbageInterval = 12000; // 검은 블록이 올라오는 간격 (12초)
+let combo = 0;
+let lastClearWasCombo = false;
+let lastGarbageTime = 0;
+const garbageInterval = 12000;
+
+// Lock delay 관련 변수
+let isLocked = false;         // 블록이 잠금 상태인지 여부
+let lockDelayStart = 0;       // 잠금 딜레이 시작 시간
+const LOCK_DELAY = 500;       // 잠금 딜레이 시간 (ms)
+let lockMoves = 0;            // 잠금 상태에서 이동/회전한 횟수
+const MAX_LOCK_MOVES = 15;    // 최대 잠금 상태 이동 횟수
 
 // 게임 시작 키 입력을 무시하기 위한 플래그 추가
 let isStartKeyPressed = false;
@@ -336,80 +343,152 @@ function checkCollision(p = piece) {
     return false;
 }
 
-// 블록 이동
+// 충돌 체크 후 아래 방향 충돌 여부를 확인하는 함수 추가
+function checkDownCollision() {
+    // 현재 위치 저장
+    const originalY = piece.y;
+    
+    // 아래로 한 칸 이동해서 충돌 체크
+    piece.y++;
+    const collides = checkCollision();
+    
+    // 원래 위치로 복원
+    piece.y = originalY;
+    
+    return collides;
+}
+
+// movePiece 함수 수정 - 이동 후 lock 상태 재평가
 function movePiece(dir) {
     piece.x += dir;
+    
     if (checkCollision()) {
         piece.x -= dir;
-    } else {
-        drawBoard();
+        return false;
     }
+    
+    // 이동 성공 후에도 아래로 충돌하는지 확인
+    const downCollision = checkDownCollision();
+    
+    // lock 상태 갱신
+    if (downCollision) {
+        // 아래로 여전히 충돌이면 lock delay 유지하되 타이머 리셋
+        if (isLocked) {
+            lockMoves++;
+            if (lockMoves < MAX_LOCK_MOVES) {
+                lockDelayStart = Date.now();
+            }
+        } else {
+            // 이제 막 충돌 상태가 되었다면 lock delay 시작
+            isLocked = true;
+            lockDelayStart = Date.now();
+            lockMoves = 0;
+        }
+    } else {
+        // 아래로 충돌이 없으면 lock 상태 해제
+        isLocked = false;
+    }
+    
+    return true;
 }
 
-// 블록 회전 - 월 킥 시스템 추가
+// rotatePiece 함수 수정 - 회전 후 lock 상태 재평가
 function rotatePiece() {
-    const originalShape = piece.shape;
+    // 현재 블록 상태 백업
     const originalX = piece.x;
     const originalY = piece.y;
-    const length = originalShape.length;
+    const originalShape = piece.shape;
     
-    // 회전된 모양 계산
-    const rotated = [];
-    for (let i = 0; i < length; i++) {
-        rotated[i] = [];
-        for (let j = 0; j < length; j++) {
-            rotated[i][j] = originalShape[length - j - 1][i];
+    // 회전된 모양 생성
+    const rotatedShape = [];
+    for (let y = 0; y < originalShape[0].length; y++) {
+        rotatedShape[y] = [];
+        for (let x = 0; x < originalShape.length; x++) {
+            rotatedShape[y][x] = originalShape[originalShape.length - 1 - x][y];
         }
     }
     
-    // 원래 모양 저장
-    piece.shape = rotated;
+    // 블록 회전
+    piece.shape = rotatedShape;
     
-    // 기본 위치에서 충돌 여부 확인
-    if (!checkCollision()) {
-        // 충돌 없음 - 회전 성공
-        drawBoard();
-        return;
-    }
-    
-    // 월 킥 시도 - 여러 위치 시도
-    const kicks = [
-        {x: 1, y: 0},   // 오른쪽으로 1칸
-        {x: -1, y: 0},  // 왼쪽으로 1칸
-        {x: 0, y: -1},  // 위로 1칸
-        {x: 2, y: 0},   // 오른쪽으로 2칸
-        {x: -2, y: 0},  // 왼쪽으로 2칸
-        {x: 0, y: -2},  // 위로 2칸
-        {x: 1, y: -1},  // 오른쪽 위로 1칸
-        {x: -1, y: -1}  // 왼쪽 위로 1칸
-    ];
-    
-    // 여러 위치에서 시도
-    for (const kick of kicks) {
-        piece.x = originalX + kick.x;
-        piece.y = originalY + kick.y;
+    // 충돌 확인
+    if (checkCollision()) {
+        // 벽 킥 시도 (Super Rotation System 간소화 버전)
+        const kicks = [
+            {x: 1, y: 0},   // 오른쪽으로 1칸
+            {x: -1, y: 0},  // 왼쪽으로 1칸
+            {x: 0, y: -1},  // 위로 1칸
+            {x: 1, y: -1},  // 오른쪽 위 대각선
+            {x: -1, y: -1}, // 왼쪽 위 대각선
+            {x: 2, y: 0},   // 오른쪽으로 2칸
+            {x: -2, y: 0},  // 왼쪽으로 2칸
+        ];
         
-        if (!checkCollision()) {
-            // 충돌 없는 위치 찾음 - 회전 성공
-            drawBoard();
-            return;
+        let kickSuccess = false;
+        
+        // 킥 시도
+        for (const kick of kicks) {
+            piece.x += kick.x;
+            piece.y += kick.y;
+            
+            if (!checkCollision()) {
+                kickSuccess = true;
+                break;
+            }
+            
+            // 킥 실패 시 위치 복원
+            piece.x = originalX;
+            piece.y = originalY;
+        }
+        
+        // 모든 킥 실패 시 원래 상태로 복원
+        if (!kickSuccess) {
+            piece.shape = originalShape;
+            return false;
         }
     }
     
-    // 모든 킥 위치에서 실패 - 원래 상태로 복원
-    piece.shape = originalShape;
-    piece.x = originalX;
-    piece.y = originalY;
+    // 회전 성공 - 아래 방향 충돌 체크
+    const downCollision = checkDownCollision();
+    
+    // lock 상태 갱신
+    if (downCollision) {
+        // 아래로 여전히 충돌이면 lock delay 유지하되 타이머 리셋
+        if (isLocked) {
+            lockMoves++;
+            if (lockMoves < MAX_LOCK_MOVES) {
+                lockDelayStart = Date.now();
+            }
+        } else {
+            // 이제 막 충돌 상태가 되었다면 lock delay 시작
+            isLocked = true;
+            lockDelayStart = Date.now();
+            lockMoves = 0;
+        }
+    } else {
+        // 아래로 충돌이 없으면 lock 상태 해제
+        isLocked = false;
+    }
+    
+    return true;
 }
 
-// 블록 내리기
+// dropPiece 함수 업데이트 - 더 명확한 lock 상태 처리
 function dropPiece() {
     piece.y++;
+    
     if (checkCollision()) {
         piece.y--;
-        lockPiece();
+        
+        // 블록이 아직 잠금 상태가 아니면 lock delay 시작
+        if (!isLocked) {
+            isLocked = true;
+            lockDelayStart = Date.now();
+            lockMoves = 0;
+        }
     } else {
-        drawBoard();
+        // 블록이 성공적으로 이동했으면 잠금 상태 해제
+        isLocked = false;
     }
     
     dropStart = Date.now();
@@ -420,8 +499,10 @@ function hardDrop() {
     while (!checkCollision()) {
         piece.y++;
     }
+    
     piece.y--;
-    lockPiece();
+    lockPiece(); // 딜레이 없이 즉시 고정
+    isLocked = false;
 }
 
 // 블록 고정 함수
@@ -611,6 +692,20 @@ function gameLoop() {
     const now = Date.now();
     const delta = now - dropStart;
     
+    // lock delay 처리
+    if (isLocked) {
+        const lockDelta = now - lockDelayStart;
+        
+        // 잠금 딜레이 시간이 지나거나 최대 이동 횟수를 초과하면 블록 고정
+        if (lockDelta > LOCK_DELAY || lockMoves >= MAX_LOCK_MOVES) {
+            lockPiece();
+            isLocked = false;
+        }
+    } else if (delta > dropInterval) {
+        // 일반 드롭 처리
+        dropPiece();
+    }
+    
     // 레벨 2 이상에서 가비지 라인 추가
     if (level >= 2) {
         const garbageDelta = now - lastGarbageTime;
@@ -625,10 +720,6 @@ function gameLoop() {
             addGarbageLines(linesToAdd);
             lastGarbageTime = now;
         }
-    }
-    
-    if (delta > dropInterval) {
-        dropPiece();
     }
     
     // 현재 게임 상태가 여전히 유효한지 확인
