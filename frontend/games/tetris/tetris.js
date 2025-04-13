@@ -105,6 +105,10 @@ let isStartKeyPressed = false;
 // 테트로미노 가방(bag) 시스템 구현
 let pieceBag = [];
 
+// 1. 게임 상태 변수에 일시정지 관련 변수 추가 (약 90번째 줄 부근)
+let pauseStartTime = 0;     // 일시정지 시작 시간
+let totalPausedTime = 0;    // 총 일시정지 시간
+
 // 새로운 7-bag을 생성하고 섞는 함수
 function generateBag() {
     // 1부터 7까지의 숫자 배열 생성 (7개 테트로미노 타입)
@@ -213,6 +217,7 @@ function startGame() {
     combo = 0;
     lastClearWasCombo = false;
     lastGarbageTime = Date.now();
+    totalPausedTime = 0; // 총 일시정지 시간 초기화
     
     updateScore();
     startButton.textContent = '게임 재시작';
@@ -226,12 +231,20 @@ function startGame() {
 
 // 게임 일시정지 토글
 function togglePause() {
-    if (!isPlaying || gameOver) return;
-    
     isPaused = !isPaused;
-    pauseButton.textContent = isPaused ? '게임 재개 (ESC)' : '일시정지 (ESC)';
     
-    if (!isPaused) {
+    if (isPaused) {
+        // 일시정지 시작 시간 기록
+        pauseStartTime = Date.now();
+        pauseButton.textContent = '게임 재개 (ESC)';
+        console.log('게임 일시정지');
+    } else {
+        // 일시정지 해제 시 총 일시정지 시간 업데이트
+        totalPausedTime += (Date.now() - pauseStartTime);
+        pauseButton.textContent = '일시정지 (ESC)';
+        console.log('게임 재개');
+        
+        // 게임 루프 재시작
         dropStart = Date.now();
         animationId = requestAnimationFrame(gameLoop);
     }
@@ -278,7 +291,7 @@ function drawBoard() {
     }
     
     // 격자선 그리기
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)'; // 격자선 색상: 반투명 검은색
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)'; // 격자선 색상: 반투명 검은색
     ctx.lineWidth = 2; // 격자선 두께: 두껍게 설정
 
     // 수직 격자선 그리기
@@ -710,9 +723,11 @@ function gameLoop() {
     const now = Date.now();
     const delta = now - dropStart;
     
-    // 시간 기반 레벨업 시스템 추가
+    // 시간 기반 레벨업 시스템 - 일시정지 시간을 고려하여 실제 게임 시간 계산
     if (isPlaying) {
-        const gameTime = now - gameStartTime;
+        // 실제 게임 진행 시간 = 현재 시간 - 게임 시작 시간 - 총 일시정지 시간
+        const gameTime = now - gameStartTime - totalPausedTime;
+        
         // 시간에 따라 레벨 계산 (30초당 1레벨씩 상승)
         const newLevel = Math.floor(gameTime / LEVEL_UP_INTERVAL) + 1;
         
