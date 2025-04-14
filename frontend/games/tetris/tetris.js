@@ -256,6 +256,7 @@ function drawBoard() {
     ctx.fillStyle = '#ecf0f1';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
+    // 보드에 있는 블록들 그리기
     for (let row = 0; row < ROWS; row++) {
         for (let col = 0; col < COLS; col++) {
             const cellValue = board[row][col];
@@ -269,6 +270,12 @@ function drawBoard() {
                 ctx.strokeRect(col * BLOCK_SIZE, row * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
             }
         }
+    }
+    
+    // 고스트 블록 그리기 (현재 블록이 있고, 게임 오버가 아닐 때만)
+    if (piece && !gameOver && !isPaused) {
+        const ghost = getGhostPosition();
+        drawGhostPiece(ghost);
     }
     
     // 현재 블록 그리기
@@ -1069,6 +1076,60 @@ function showLevelUpMessage(level) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.fillText(`점수 보너스 x${level}`, canvas.width / 2, canvas.height / 2 + 30);
     ctx.restore(); // 컨텍스트 상태 복원
+}
+
+/////////////////////////////
+// 고스트 블록 위치 계산 함수 //
+/////////////////////////////
+function getGhostPosition() {
+    // 현재 블록의 정보를 복사
+    const ghost = {
+        shape: piece.shape,
+        type: piece.type,
+        x: piece.x,
+        y: piece.y
+    };
+    
+    // 아래로 이동해 보면서 충돌이 날 때까지 y를 증가시킴
+    while (!checkCollision(ghost)) {
+        ghost.y++;
+    }
+    
+    // 충돌이 발생한 위치에서 한 칸 위로 올림 (유효한 위치로)
+    ghost.y--;
+    
+    return ghost;
+}
+
+//////////////////////
+// 고스트 블록 그리기 함수 //
+//////////////////////
+function drawGhostPiece(ghost) {
+    // 고스트 블록은 반투명하게 그림
+    ctx.save(); // 현재 컨텍스트 상태 저장
+    ctx.globalAlpha = 0.25; // 투명도 설정
+    
+    for (let row = 0; row < ghost.shape.length; row++) {
+        for (let col = 0; col < ghost.shape[row].length; col++) {
+            if (ghost.shape[row][col] !== 0) {
+                const x = ghost.x + col;
+                const y = ghost.y + row;
+                
+                if (y >= 0) { // 화면 위쪽으로 넘어가지 않도록
+                    // 고스트 블록 색상과 윤곽선
+                    ctx.fillStyle = COLORS[ghost.type];
+                    ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    
+                    // 윤곽선 강조
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                }
+            }
+        }
+    }
+    
+    ctx.restore(); // 컨텍스트 상태 복원 (투명도 등 초기화)
 }
 
 // 이벤트 리스너
