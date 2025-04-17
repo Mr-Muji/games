@@ -133,11 +133,20 @@ function getNextPiece() {
     // 가방에서 다음 조각 가져오기
     const type = pieceBag.pop();
     
+    // 테트로미노의 형태에 따라 적절한 y 위치 계산
+    // 첫 줄이 전부 0인 경우 더 위에서 시작해야 자연스러움
+    let yOffset = -2; // 기본적으로 두 줄 위에서 시작
+    
+    // I 블록(타입 1)은 특별히 처리 (형태가 다르므로)
+    if (type === 1) {
+        yOffset = -1; // I 블록은 한 줄만 위에서 시작
+    }
+    
     return {
         type: type,
         shape: SHAPES[type],
         x: Math.floor(COLS / 2) - 1,
-        y: 0
+        y: yOffset // 처음에는 화면 위에서 시작
     };
 }
 
